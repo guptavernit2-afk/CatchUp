@@ -6,7 +6,7 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
-import { initEngine, isEngineReady, parseConversation, analyzeConversation } from './engine.js?v=9';
+import { initEngine, isEngineReady, parseConversation, analyzeConversation } from './engine.js?v=10';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
@@ -293,14 +293,62 @@ dom.newAnalysisBtn.addEventListener('click', () => {
 // ══════════════
 // Render Results (safe DOM only)
 // ══════════════
+function cleanFindingText(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/^(?:Confirmed task|Attention requested|Decision made|Open item\/question|Question raised|Status update):\s*"?/i, '')
+    .replace(/"\s*$/, '')
+    .trim();
+}
+
+function switchTab(tabId) {
+  const grid = $('results-grid');
+  if (!grid) return;
+
+  // Update tabs active state
+  document.querySelectorAll('.switcher-tab').forEach(btn => {
+    const isActive = btn.getAttribute('data-tab') === tabId;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  // Update metrics pills active state
+  document.querySelectorAll('.metric-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.getAttribute('data-target') === tabId);
+  });
+
+  // Update grid layout mode
+  grid.className = `results-grid layout-${tabId}`;
+
+  // If in overview mode, restore visibility based on item counts
+  if (tabId === 'overview' && lastAnalysisResult) {
+    if (dom.sectionNeedsYou) dom.sectionNeedsYou.classList.toggle('hidden', !(lastAnalysisResult.needs_you && lastAnalysisResult.needs_you.length > 0));
+    if (dom.sectionSummary) dom.sectionSummary.classList.remove('hidden');
+    if (dom.sectionActions) dom.sectionActions.classList.toggle('hidden', !(lastAnalysisResult.action_items && lastAnalysisResult.action_items.length > 0));
+    if (dom.sectionDecisions) dom.sectionDecisions.classList.toggle('hidden', !(lastAnalysisResult.decisions && lastAnalysisResult.decisions.length > 0));
+    if (dom.sectionQuestions) dom.sectionQuestions.classList.toggle('hidden', !(lastAnalysisResult.open_questions && lastAnalysisResult.open_questions.length > 0));
+  }
+}
+
 function renderResults(data) {
   lastAnalysisResult = data;
 
+  const countNY = (data.needs_you || []).length;
+  const countAct = (data.action_items || []).length;
+  const countDec = (data.decisions || []).length;
+  const countQues = (data.open_questions || []).length;
+
   // Update Metric summary bar
-  if (dom.countNeedsYou) dom.countNeedsYou.textContent = (data.needs_you || []).length;
-  if (dom.countActions) dom.countActions.textContent = (data.action_items || []).length;
-  if (dom.countDecisions) dom.countDecisions.textContent = (data.decisions || []).length;
-  if (dom.countQuestions) dom.countQuestions.textContent = (data.open_questions || []).length;
+  if (dom.countNeedsYou) dom.countNeedsYou.textContent = countNY;
+  if (dom.countActions) dom.countActions.textContent = countAct;
+  if (dom.countDecisions) dom.countDecisions.textContent = countDec;
+  if (dom.countQuestions) dom.countQuestions.textContent = countQues;
+
+  // Update Tab count badges
+  const bNY = $('badge-needs-you'); if (bNY) bNY.textContent = countNY;
+  const bAct = $('badge-actions'); if (bAct) bAct.textContent = countAct;
+  const bDec = $('badge-decisions'); if (bDec) bDec.textContent = countDec;
+  const bQues = $('badge-questions'); if (bQues) bQues.textContent = countQues;
 
   // Needs You
   renderCardList(dom.needsYouList, data.needs_you, dom.sectionNeedsYou, true, false, false);
@@ -324,6 +372,9 @@ function renderResults(data) {
 
   // Open Questions
   renderCardList(dom.questionsList, data.open_questions, dom.sectionQuestions, false, false, false);
+
+  // Reset to Overview tab
+  switchTab('overview');
 }
 
 /**
@@ -372,29 +423,36 @@ function renderCardList(container, items, section, showPriority = false, showOwn
       textWrapper = body;
     }
 
-    // Text
+    // Top Header Row for text & owner
+    const headerRow = document.createElement('div');
+    headerRow.className = 'finding-header-row';
+
+    // Cleaned primary text
     const textEl = document.createElement('p');
     textEl.className = 'finding-text';
-    textEl.textContent = item.text; // Safe
-    textWrapper.appendChild(textEl);
+    textEl.textContent = cleanFindingText(item.text); // Safe
+    headerRow.appendChild(textEl);
 
-    // Owner (action items)
+    // Owner badge (action items)
     if (showOwner && item.owner) {
       const ownerEl = document.createElement('span');
       ownerEl.className = 'finding-owner';
-      ownerEl.textContent = `→ ${item.owner}`; // Safe
-      textWrapper.appendChild(ownerEl);
+      ownerEl.textContent = `@${item.owner}`; // Safe
+      headerRow.appendChild(ownerEl);
     }
+    textWrapper.appendChild(headerRow);
 
-    // Meta row
+    // Meta row (Quote + Reference)
     const meta = document.createElement('div');
     meta.className = 'finding-meta';
 
-    // Quote
-    if (item.quote) {
+    // Show quote only if it differs from the primary text
+    const cleaned = cleanFindingText(item.text);
+    const hasDistinctQuote = item.quote && item.quote.trim() && item.quote.trim() !== cleaned;
+    if (hasDistinctQuote) {
       const quoteEl = document.createElement('span');
       quoteEl.className = 'finding-quote';
-      quoteEl.textContent = `"${item.quote}"`; // Safe
+      quoteEl.textContent = `“${item.quote}”`; // Safe
       meta.appendChild(quoteEl);
     }
 
@@ -546,14 +604,25 @@ if (dom.downloadMdBtn) {
   });
 }
 
-// Wire Metric Pills Smooth Scroll
+// Wire View Switcher Tabs
+document.querySelectorAll('.switcher-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.getAttribute('data-tab');
+    if (tabId) switchTab(tabId);
+  });
+});
+
+// Wire Metric Pills to switch tabs
 document.querySelectorAll('.metric-pill').forEach(pill => {
   pill.addEventListener('click', () => {
-    const targetId = pill.getAttribute('data-target');
-    if (!targetId) return;
-    const el = document.getElementById(targetId);
-    if (el && !el.classList.contains('hidden')) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const target = pill.getAttribute('data-target');
+    if (target) switchTab(target);
+  });
+  pill.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const target = pill.getAttribute('data-target');
+      if (target) switchTab(target);
     }
   });
 });
