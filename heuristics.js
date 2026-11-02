@@ -6,15 +6,31 @@
  * Does not depend on WebLLM or external APIs.
  */
 
-export function extractDeterministicFindings(messages) {
+export function extractDeterministicFindings(messages, targetUser = null) {
   const fallbackNeedsYou = [];
   const fallbackActions = [];
   const fallbackDecisions = [];
   const fallbackQuestions = [];
 
+  // Prepare targeted regex
+  let needsYouRegex = null;
+  if (targetUser && targetUser.trim()) {
+    const escaped = targetUser.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    needsYouRegex = new RegExp(`(^|\\W)@?${escaped}(\\W|$)`, 'i');
+  }
+  const mentionRegex = /@([A-Za-z0-9_]+)/;
+  const urgentRegex = /(?:urgent|blocker|blocking|action required|attention)/i;
+
   messages.forEach(msg => {
     // 1. Needs You (Attention)
-    if (/(^|\W)@?Sumit(\W|$)/i.test(msg.text) || /(^|\W)@?Sumit(\W|$)/i.test(msg.sender)) {
+    let isTargeted = false;
+    if (needsYouRegex) {
+      isTargeted = needsYouRegex.test(msg.text) || needsYouRegex.test(msg.sender);
+    } else {
+      isTargeted = mentionRegex.test(msg.text) || urgentRegex.test(msg.text);
+    }
+
+    if (isTargeted) {
       fallbackNeedsYou.push({ text: `Attention requested: "${msg.text}"`, quote: msg.text, source_id: msg.id, priority: "high" });
     }
 

@@ -136,4 +136,57 @@ runTest('Empty input resilience',
   }
 );
 
+// 11. Dynamic targetUser matching (explicit @targetUser)
+runTest('Dynamic targetUser matching',
+  [
+    createMsg('12', 'Alice', 'Hey team, everything looks fine here'),
+    createMsg('13', 'Bob', '@Sumit can you review the PR?'),
+    createMsg('14', 'Charlie', 'Sounds good, see you both later')
+  ],
+  (res) => {
+    const r = extractDeterministicFindings(
+      [
+        createMsg('12', 'Alice', 'Hey team, everything looks fine here'),
+        createMsg('13', 'Bob', '@Sumit can you review the PR?'),
+        createMsg('14', 'Charlie', 'Sounds good, see you both later')
+      ],
+      'Sumit'
+    );
+    assert.strictEqual(r.fallbackNeedsYou.length, 1, 'Should flag exactly one targeted mention');
+    assert.strictEqual(r.fallbackNeedsYou[0].source_id, 'msg_13');
+    assert.strictEqual(r.fallbackNeedsYou[0].priority, 'high');
+  }
+);
+
+// 12. targetUser null falls back to any mention / urgent indicator
+runTest('targetUser null fallback detection',
+  [
+    createMsg('15', 'Alice', 'Everything is fine, no action needed'),
+    createMsg('16', 'Bob', '@Charlie this is a blocker, please escalate'),
+    createMsg('17', 'Dave', 'urgent: the build is down')
+  ],
+  (res) => {
+    const r = extractDeterministicFindings(
+      [
+        createMsg('15', 'Alice', 'Everything is fine, no action needed'),
+        createMsg('16', 'Bob', '@Charlie this is a blocker, please escalate'),
+        createMsg('17', 'Dave', 'urgent: the build is down')
+      ],
+      null
+    );
+    const ids = r.fallbackNeedsYou.map(f => f.source_id);
+    assert.deepStrictEqual(ids, ['msg_16', 'msg_17'], 'Should flag any mention and urgent indicators');
+  }
+);
+
+// 13. Signature compatibility — calling with no second arg still works
+runTest('Signature compatibility (no targetUser)',
+  [createMsg('18', 'Eve', '@Bob I will finish the report')],
+  (res) => {
+    const r = extractDeterministicFindings([createMsg('18', 'Eve', '@Bob I will finish the report')]);
+    assert.strictEqual(r.fallbackNeedsYou.length, 1);
+    assert.strictEqual(r.fallbackNeedsYou[0].source_id, 'msg_18');
+  }
+);
+
 console.log('\nAll tests completed successfully.');

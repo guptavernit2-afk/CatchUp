@@ -111,7 +111,7 @@ Rules:
  * @param {function} onProgress - Called with { text, progress }
  * @returns {Promise<object>} Validated analysis result
  */
-export async function analyzeConversation(messages, onProgress) {
+export async function analyzeConversation(messages, onProgress, targetUser = null) {
   const engine = await initEngine(onProgress);
 
   const convText = messages.map(c => `[${c.id}] ${c.sender}: ${c.text}`).join('\n');
@@ -213,11 +213,11 @@ const validSummaries = summaries.filter(s => {
 const summary_points = validSummaries.length > 0 ? validSummaries : ["This conversation has not yet been summarized."];
   
   // Principled Deterministic Extraction via heuristics.js
-  const { fallbackNeedsYou, fallbackActions, fallbackDecisions, fallbackQuestions } = extractDeterministicFindings(messages);
+  const { fallbackNeedsYou, fallbackActions, fallbackDecisions, fallbackQuestions } = extractDeterministicFindings(messages, targetUser);
 
   return {
     needs_you: dedupe(validateFindings(getArr(['needs_you', 'needsYou', 'Needs You'])), fallbackNeedsYou),
-    summary_points: summaries,
+    summary_points: summary_points,
     action_items: dedupe(validateFindings(getArr(['action_items', 'actionItems', 'Action Items', 'tasks'])), fallbackActions),
     decisions: dedupe(validateFindings(getArr(['decisions', 'Decisions Made', 'decisions_made'])), fallbackDecisions),
     open_questions: dedupe(validateFindings(getArr(['open_questions', 'openQuestions', 'Open Questions', 'questions'])), fallbackQuestions)
