@@ -18,6 +18,8 @@ let engineReady = false;
 
 /**
  * Initialize the WebLLM engine (idempotent).
+ * Note: Uses a cached singleton promise; subsequent callers share the same engine
+ * instance, and only the first caller's onProgress is used for initial load.
  * @param {function} onProgress - Called with { text: string, progress: number }
  * @returns {Promise<object>} The MLCEngine instance
  */
@@ -109,6 +111,7 @@ Rules:
  * Run analysis on parsed messages.
  * @param {Array<{id: string, sender: string, text: string}>} messages
  * @param {function} onProgress - Called with { text, progress }
+ * @param {string|null} targetUser - Optional name to focus "Needs You" attention detection
  * @returns {Promise<object>} Validated analysis result
  */
 export async function analyzeConversation(messages, onProgress, targetUser = null) {
@@ -135,9 +138,9 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
   try {
     parsed = JSON.parse(replyText);
   } catch (e) {
-    const match = replyText.match(/```(?:json)?\n([\s\S]*?)\n```/);
+    const match = replyText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (match) {
-      parsed = JSON.parse(match[1]);
+      parsed = JSON.parse(match[1].trim());
     } else {
       throw new Error("Model did not return valid JSON. Raw output: " + replyText.substring(0, 100) + "...");
     }
@@ -156,7 +159,7 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
   ];
 
   function isPlaceholder(str) {
-    if (!str) return true;
+    if (!str || typeof str !== 'string') return true;
     const lower = str.toLowerCase();
     return placeholders.some(p => lower.includes(p));
   }
@@ -166,14 +169,15 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
     return arr.filter(f => {
       if (!f || typeof f !== 'object') return false;
       if (isPlaceholder(f.text)) return false;
-      if (!f.quote) return false;
+      if (!f.quote || !f.quote.trim()) return false;
       
-      const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const normQuote = normalize(f.quote);
+      if (!normQuote) return false;
       
       let matchedMsg = null;
       for (const m of messages) {
-        if (normalize(m.text).includes(normQuote)) {
+        if (m && m.text && normalize(m.text).includes(normQuote)) {
           matchedMsg = m;
           break;
         }
@@ -206,7 +210,7 @@ const validSummaries = summaries.filter(s => {
   if (isPlaceholder(s)) return false;
   // Additional validation: summary should not be a generic instruction
   const lower = s.toLowerCase();
-  return !/(?:description|task|decision|question|point|conversation|exact phrase|from conversation)/i.test(lower);
+  return !/(?:a useful.*summary|concise bullet|exact phrase from|do not just write)/i.test(lower);
 });
 
 // Fallback: if no valid summary, provide a safe default

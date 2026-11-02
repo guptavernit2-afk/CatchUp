@@ -269,5 +269,32 @@ runTest('URL with "?" does not create spurious open question',
   }
 );
 
+// 22. Malformed message resilience — null/undefined text or missing sender
+runTest('Malformed message resilience (null/undefined/missing fields)',
+  [
+    { id: 'msg_32', sender: 'Alice', text: null },
+    { id: 'msg_33', sender: undefined, text: 'I will handle the docs' },
+    null
+  ],
+  (res) => {
+    assert.strictEqual(res.fallbackActions.length, 1);
+    assert.strictEqual(res.fallbackActions[0].source_id, 'msg_33');
+  }
+);
+
+// 23. TargetUser matching with missing sender
+runTest('TargetUser matching when sender is null/missing',
+  [
+    { id: 'msg_34', sender: null, text: '@Bob urgent issue' }
+  ],
+  (res) => {
+    const r = extractDeterministicFindings(
+      [{ id: 'msg_34', sender: null, text: '@Bob urgent issue' }],
+      'Bob'
+    );
+    assert.strictEqual(r.fallbackNeedsYou.length, 1);
+  }
+);
+
 console.log('\nAll tests completed successfully.');
 

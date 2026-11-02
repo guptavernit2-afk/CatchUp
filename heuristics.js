@@ -15,15 +15,20 @@ export function extractDeterministicFindings(messages, targetUser = null) {
   // Prepare targeted regex
   let needsYouRegex = null;
   let targetUserTrimmed = '';
+  let senderIsTargetUserRegex = null; // Hoisted: built once, tested per message
   if (targetUser && targetUser.trim()) {
     targetUserTrimmed = targetUser.trim();
     const escaped = targetUserTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     needsYouRegex = new RegExp(`(^|\\W)@?${escaped}(\\W|$)`, 'i');
+    senderIsTargetUserRegex = new RegExp(`^${escaped}$`, 'i');
   }
   const mentionRegex = /@([A-Za-z0-9_]+)/;
   const urgentRegex = /(?:urgent|blocker|blocking|action required|attention)/i;
 
   messages.forEach(msg => {
+    // Guard: skip malformed messages
+    if (!msg || typeof msg.text !== 'string') return;
+
     // ── Strip URLs before any text analysis to avoid false positives ──────────
     const textWithoutUrls = msg.text.replace(/https?:\/\/[^\s]*/g, '');
 
@@ -31,10 +36,10 @@ export function extractDeterministicFindings(messages, targetUser = null) {
     // FIX: Skip flagging if the sender IS the targetUser (self-mention guard)
     let isTargeted = false;
     if (needsYouRegex) {
-      const escaped = targetUserTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const senderIsTargetUser = new RegExp(`^${escaped}$`, 'i').test(msg.sender.trim());
+      const sender = (msg.sender || '').trim();
+      const senderIsTargetUser = senderIsTargetUserRegex.test(sender);
       if (!senderIsTargetUser) {
-        isTargeted = needsYouRegex.test(msg.text) || needsYouRegex.test(msg.sender);
+        isTargeted = needsYouRegex.test(msg.text) || (msg.sender ? needsYouRegex.test(msg.sender) : false);
       }
     } else {
       isTargeted = mentionRegex.test(msg.text) || urgentRegex.test(msg.text);

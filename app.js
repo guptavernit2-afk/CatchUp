@@ -188,9 +188,11 @@ function handleFile(file) {
     dom.textarea.value = e.target.result;
     updateCharCount();
     dom.inputHint.textContent = '';
+    if (dom.fileInput) dom.fileInput.value = '';
   };
   reader.onerror = () => {
     dom.inputHint.textContent = 'Failed to read file.';
+    if (dom.fileInput) dom.fileInput.value = '';
   };
   reader.readAsText(file);
 }
@@ -279,7 +281,9 @@ async function runAnalysis() {
 dom.analyzeBtn.addEventListener('click', runAnalysis);
 dom.retryBtn.addEventListener('click', () => {
   showView('input');
-  runAnalysis();
+  if (dom.textarea.value.trim()) {
+    runAnalysis();
+  }
 });
 dom.newAnalysisBtn.addEventListener('click', () => {
   showView('input');
@@ -466,13 +470,13 @@ function generateMarkdown(data) {
   return lines.join('\n');
 }
 
-// Wire Copy Markdown Button
+// Wire Copy Markdown Button with fallback
 if (dom.copyMarkdownBtn) {
   dom.copyMarkdownBtn.addEventListener('click', async () => {
     if (!lastAnalysisResult) return;
     const md = generateMarkdown(lastAnalysisResult);
-    try {
-      await navigator.clipboard.writeText(md);
+    
+    function setCopySuccess() {
       if (dom.copyBtnText) {
         const orig = dom.copyBtnText.textContent;
         dom.copyBtnText.textContent = '✓ Copied!';
@@ -482,8 +486,42 @@ if (dom.copyMarkdownBtn) {
           dom.copyMarkdownBtn.classList.remove('copied');
         }, 2000);
       }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(md);
+        setCopySuccess();
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
     } catch (err) {
-      console.warn('Clipboard write failed, trying fallback:', err);
+      console.warn('Clipboard API failed, trying fallback:', err);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = md;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          setCopySuccess();
+        } else {
+          throw new Error('Fallback copy failed');
+        }
+      } catch (fallbackErr) {
+        console.error('All copy attempts failed:', fallbackErr);
+        if (dom.copyBtnText) {
+          dom.copyBtnText.textContent = 'Copy failed';
+          setTimeout(() => {
+            dom.copyBtnText.textContent = 'Copy Markdown';
+          }, 2000);
+        }
+      }
     }
   });
 }
@@ -499,9 +537,12 @@ if (dom.downloadMdBtn) {
     a.href = url;
     a.download = `catchup-report-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      a.click();
+    } finally {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   });
 }
 
