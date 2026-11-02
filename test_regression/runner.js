@@ -189,4 +189,85 @@ runTest('Signature compatibility (no targetUser)',
   }
 );
 
+
+// ── NEW REGRESSION TESTS — Bug fixes from adversarial run (Phase 2) ──────────
+
+// 14. Negation — "I can't" must not become an action
+runTest('Negation: "I can\'t make it" is not an action',
+  [createMsg('20', 'Bob', "I can't make it to the meeting tomorrow")],
+  (res) => {
+    assert.strictEqual(res.fallbackActions.length, 0, '"I can\'t" is a negation, not a commitment');
+  }
+);
+
+// 15. Self-mention guard — Bob's own messages not flagged when targetUser = Bob
+runTest('Self-mention guard: own messages not flagged',
+  [],
+  (res) => {
+    const r = extractDeterministicFindings([
+      createMsg('21', 'Bob', 'I will handle the deployment'),
+      createMsg('22', 'Alice', '@Bob can you confirm?'),
+      createMsg('23', 'Bob', 'Confirmed')
+    ], 'Bob');
+    const selfFlags = r.fallbackNeedsYou.filter(f => f.source_id === 'msg_21' || f.source_id === 'msg_23');
+    assert.strictEqual(selfFlags.length, 0, "Bob's own messages must not be flagged when targetUser=Bob");
+    assert.ok(r.fallbackNeedsYou.some(f => f.source_id === 'msg_22'), 'Alice mentioning Bob must be flagged');
+  }
+);
+
+// 16. Short-token question resolution — "1 PM works for me"
+runTest('Short-token resolution: "1 PM works for me" resolves time question',
+  [
+    createMsg('24', 'Alice', 'Can we meet at 1 PM?'),
+    createMsg('25', 'Bob', '1 PM works for me, I will be there')
+  ],
+  (res) => {
+    assert.strictEqual(res.fallbackQuestions.length, 0, '"1 PM" echo + positive ack must resolve question');
+  }
+);
+
+// 17. "agreed to disagree" is not a decision
+runTest('"Agreed to disagree" is not a decision',
+  [createMsg('26', 'Alice', 'We agreed to disagree on this')],
+  (res) => {
+    assert.strictEqual(res.fallbackDecisions.length, 0, '"agreed to disagree" must not be captured as decision');
+  }
+);
+
+// 18. "The requirement is TBD" is not a decision
+runTest('"Requirement is TBD" is not a decision',
+  [createMsg('27', 'Bob', 'The requirement is TBD and will be decided later')],
+  (res) => {
+    assert.strictEqual(res.fallbackDecisions.length, 0, '"requirement" removed from decision keywords; TBD guard active');
+  }
+);
+
+// 19. "I will think about it" is not an action
+runTest('"I will think about it" is not an action (vague hedge)',
+  [createMsg('28', 'Alice', 'I will think about it')],
+  (res) => {
+    assert.strictEqual(res.fallbackActions.length, 0, '"will think" is a vague hedge, not a commitment');
+  }
+);
+
+// 20. "We will see" is not an action
+runTest('"We will see" is not an action (speculative)',
+  [createMsg('29', 'Alice', 'We will see how it goes')],
+  (res) => {
+    assert.strictEqual(res.fallbackActions.length, 0, '"will see" is speculative, not a commitment');
+  }
+);
+
+// 21. URL query string "?" does not create a spurious open question
+runTest('URL with "?" does not create spurious open question',
+  [
+    createMsg('30', 'Alice', 'Check this: https://example.com/api?token=xyz&v=2'),
+    createMsg('31', 'Bob', 'Got it')
+  ],
+  (res) => {
+    assert.strictEqual(res.fallbackQuestions.length, 0, 'URL query strings must not be treated as questions');
+  }
+);
+
 console.log('\nAll tests completed successfully.');
+
