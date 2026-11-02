@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchUp — Catch up on what matters</title>
   <meta name="description" content="CatchUp analyzes your conversations locally using AI. No data leaves your device.">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=9">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap" rel="stylesheet">
@@ -82,7 +82,18 @@
                 <button class="text-btn" id="clear-btn" type="button">Clear text</button>
               </div>
             </div>
-            
+
+            <div class="target-user-row">
+              <div class="target-user-field">
+                <svg class="target-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="target-user-input" class="target-user-input" placeholder="e.g. Alice or @Alice (optional)" autocomplete="off" />
+              </div>
+              <p class="target-user-hint">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Highlights tasks &amp; urgent items directed to you under "Needs You"
+              </p>
+            </div>
+
             <div id="file-drop-zone" class="file-drop-zone">
               <input type="file" id="file-input" accept=".md,.txt" style="display: none;" />
               <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 16 4-4 4 4"/></svg>
@@ -137,16 +148,53 @@
           <!-- Results workspace -->
           <section class="results-workspace hidden" id="results-workspace">
             <div class="results-header">
-              <h2>Analysis Results</h2>
-              <button class="secondary-btn" id="new-analysis-btn" type="button">
-                <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                New Analysis
-              </button>
+              <div class="results-title-group">
+                <h2>Analysis Results</h2>
+                <span class="results-subtitle" id="results-subtitle">Inference completed 100% locally on device</span>
+              </div>
+              <div class="results-actions">
+                <button class="secondary-btn action-btn-export" id="copy-markdown-btn" type="button" title="Copy report as Markdown">
+                  <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <span id="copy-btn-text">Copy Markdown</span>
+                </button>
+                <button class="secondary-btn action-btn-export" id="download-md-btn" type="button" title="Download report as .md">
+                  <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                  <span>Download .md</span>
+                </button>
+                <button class="secondary-btn" id="new-analysis-btn" type="button">
+                  <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  <span>New Analysis</span>
+                </button>
+              </div>
             </div>
 
-            <div class="results-grid">
+            <!-- Metric Summary Bar -->
+            <div class="metrics-bar" id="metrics-bar">
+              <div class="metric-pill metric-needs-you" id="metric-needs-you" data-target="section-needs-you">
+                <span class="metric-dot"></span>
+                <span class="metric-label">Needs You</span>
+                <span class="metric-count" id="count-needs-you">0</span>
+              </div>
+              <div class="metric-pill metric-actions" id="metric-actions" data-target="section-actions">
+                <span class="metric-dot"></span>
+                <span class="metric-label">Action Items</span>
+                <span class="metric-count" id="count-actions">0</span>
+              </div>
+              <div class="metric-pill metric-decisions" id="metric-decisions" data-target="section-decisions">
+                <span class="metric-dot"></span>
+                <span class="metric-label">Decisions</span>
+                <span class="metric-count" id="count-decisions">0</span>
+              </div>
+              <div class="metric-pill metric-questions" id="metric-questions" data-target="section-questions">
+                <span class="metric-dot"></span>
+                <span class="metric-label">Open Questions</span>
+                <span class="metric-count" id="count-questions">0</span>
+              </div>
+            </div>
+
+            <div class="results-grid bento-grid">
               <!-- Needs You -->
-              <div class="result-section needs-you-section hidden" id="section-needs-you">
+              <div class="result-section needs-you-section bento-item bento-needs-you hidden" id="section-needs-you">
                 <div class="section-label">
                   <span class="section-icon needs-you-icon">!</span>
                   Needs Your Attention
@@ -155,25 +203,25 @@
               </div>
 
               <!-- Quick Summary -->
-              <div class="result-section summary-section" id="section-summary">
+              <div class="result-section summary-section bento-item bento-summary" id="section-summary">
                 <div class="section-label">
                   <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-                  Quick Summary
+                  Executive Summary
                 </div>
                 <ul class="summary-list" id="summary-list"></ul>
               </div>
 
               <!-- Action Items -->
-              <div class="result-section hidden" id="section-actions">
+              <div class="result-section actions-section bento-item bento-actions hidden" id="section-actions">
                 <div class="section-label">
                   <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                  Action Items
+                  Action Items &amp; Deliverables
                 </div>
                 <div class="cards-list" id="actions-list"></div>
               </div>
 
               <!-- Decisions Made -->
-              <div class="result-section hidden" id="section-decisions">
+              <div class="result-section decisions-section bento-item bento-decisions hidden" id="section-decisions">
                 <div class="section-label">
                   <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   Decisions Made
@@ -182,10 +230,10 @@
               </div>
 
               <!-- Open Questions -->
-              <div class="result-section hidden" id="section-questions">
+              <div class="result-section questions-section bento-item bento-questions hidden" id="section-questions">
                 <div class="section-label">
                   <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  Open Questions
+                  Open Questions &amp; Blockers
                 </div>
                 <div class="cards-list" id="questions-list"></div>
               </div>
@@ -242,6 +290,6 @@
   </div>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-  <script type="module" src="app.js?v=8"></script>
+  <script type="module" src="app.js?v=9"></script>
 </body>
 </html>
