@@ -6,7 +6,7 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
-import { initEngine, isEngineReady, parseConversation, analyzeConversation } from './engine.js?v=10';
+import { initEngine, isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport } from './engine.js?v=11';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
@@ -38,9 +38,28 @@ const dom = {
   modelDot:        $('model-dot'),
   modelStatusText: $('model-status-text'),
 
-  // Input
+  // Input & Mode
   inputPanel:      $('input-panel'),
   targetUserInput: $('target-user-input'),
+  optModeLocal:    $('opt-mode-local'),
+  optModeCloud:    $('opt-mode-cloud'),
+  optModeHeuristic:$('opt-mode-heuristic'),
+  engineStatusBadge:$('engine-status-badge'),
+  cloudConfigDrawer:$('cloud-config-drawer'),
+  cloudProviderSelect:$('cloud-provider-select'),
+  cloudApiKey:     $('cloud-api-key'),
+  keyToggleBtn:    $('key-toggle-btn'),
+  saveApiKeyBtn:   $('save-api-key-btn'),
+  clearApiKeyBtn:  $('clear-api-key-btn'),
+  keyStatusText:   $('key-status-text'),
+  keyStatusDot:    $('key-status-dot'),
+  cloudCustomEndpointRow:$('cloud-custom-endpoint-row'),
+  cloudCustomEndpoint:$('cloud-custom-endpoint'),
+  hardwareAlertBanner:$('hardware-alert-banner'),
+  hardwareAlertText:$('hardware-alert-text'),
+  cloudKeyHelpLink:$('cloud-key-help-link'),
+  privacyNote:     document.querySelector('.privacy-note'),
+  privacyNoteText: $('privacy-note-text'),
   textarea:        $('conversation-input'),
   charCount:       $('char-count'),
   loadSampleBtn:   $('load-sample-btn'),
@@ -232,6 +251,120 @@ function showError(message) {
 }
 
 // ══════════════
+// Engine Mode & Cloud Config
+// ══════════════
+let currentEngineMode = localStorage.getItem('catchup_engine_mode') || 'local';
+
+function getSavedApiKey(provider) {
+  return localStorage.getItem(`catchup_api_key_${provider}`) || '';
+}
+
+function saveApiKey(provider, key) {
+  if (key && key.trim()) {
+    localStorage.setItem(`catchup_api_key_${provider}`, key.trim());
+  } else {
+    localStorage.removeItem(`catchup_api_key_${provider}`);
+  }
+  updateKeyStatusDisplay();
+}
+
+function updateKeyStatusDisplay() {
+  if (!dom.cloudProviderSelect) return;
+  const provider = dom.cloudProviderSelect.value;
+  const key = getSavedApiKey(provider);
+
+  // Update help link based on provider
+  if (dom.cloudKeyHelpLink) {
+    if (provider === 'gemini') {
+      dom.cloudKeyHelpLink.href = 'https://aistudio.google.com/app/apikey';
+      dom.cloudKeyHelpLink.textContent = 'Get free Gemini API Key ↗';
+      dom.cloudKeyHelpLink.classList.remove('hidden');
+    } else if (provider === 'groq') {
+      dom.cloudKeyHelpLink.href = 'https://console.groq.com/keys';
+      dom.cloudKeyHelpLink.textContent = 'Get Groq API Key ↗';
+      dom.cloudKeyHelpLink.classList.remove('hidden');
+    } else if (provider === 'openai') {
+      dom.cloudKeyHelpLink.href = 'https://platform.openai.com/api-keys';
+      dom.cloudKeyHelpLink.textContent = 'Get OpenAI API Key ↗';
+      dom.cloudKeyHelpLink.classList.remove('hidden');
+    } else {
+      dom.cloudKeyHelpLink.classList.add('hidden');
+    }
+  }
+
+  // Toggle custom endpoint row
+  if (dom.cloudCustomEndpointRow) {
+    dom.cloudCustomEndpointRow.classList.toggle('hidden', provider !== 'custom');
+  }
+
+  if (dom.cloudApiKey) dom.cloudApiKey.value = key;
+
+  if (dom.keyStatusDot && dom.keyStatusText) {
+    if (key) {
+      dom.keyStatusDot.className = 'status-indicator-dot dot-green';
+      const masked = key.length > 8 ? `${key.slice(0, 4)}••••${key.slice(-4)}` : '••••••••';
+      dom.keyStatusText.textContent = `Key saved for ${provider.toUpperCase()} (${masked})`;
+    } else {
+      dom.keyStatusDot.className = 'status-indicator-dot dot-gray';
+      dom.keyStatusText.textContent = `No API key saved for ${provider.toUpperCase()}`;
+    }
+  }
+}
+
+function setEngineMode(mode) {
+  currentEngineMode = mode;
+  localStorage.setItem('catchup_engine_mode', mode);
+
+  // Update radio buttons and active classes
+  if (dom.optModeLocal) dom.optModeLocal.classList.toggle('active', mode === 'local');
+  if (dom.optModeCloud) dom.optModeCloud.classList.toggle('active', mode === 'cloud');
+  if (dom.optModeHeuristic) dom.optModeHeuristic.classList.toggle('active', mode === 'heuristic');
+
+  const radio = document.querySelector(`input[name="engine-mode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+
+  // Toggle Cloud API Drawer
+  if (dom.cloudConfigDrawer) {
+    dom.cloudConfigDrawer.classList.toggle('hidden', mode !== 'cloud');
+    if (mode === 'cloud') updateKeyStatusDisplay();
+  }
+
+  // Update status badge
+  if (dom.engineStatusBadge) {
+    dom.engineStatusBadge.className = `engine-badge badge-${mode}`;
+    if (mode === 'local') {
+      dom.engineStatusBadge.textContent = '100% On-Device WebGPU';
+    } else if (mode === 'cloud') {
+      const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'API';
+      dom.engineStatusBadge.textContent = `Cloud API (${provider.toUpperCase()})`;
+    } else {
+      dom.engineStatusBadge.textContent = 'Instant Rule Engine (5ms)';
+    }
+  }
+
+  // Update Privacy Note safely
+  if (dom.privacyNoteText) {
+    if (mode === 'local') {
+      dom.privacyNoteText.textContent = '100% Local Inference. Your data never leaves your device.';
+    } else if (mode === 'heuristic') {
+      dom.privacyNoteText.textContent = '100% Offline Rule Engine. Zero network calls or telemetry.';
+    } else {
+      dom.privacyNoteText.textContent = 'Cloud API Mode. Transcript is sent securely to your configured API provider.';
+    }
+  }
+
+  // Update model status pill in header
+  if (mode === 'local') {
+    setModelStatus(isEngineReady() ? 'ready' : '', isEngineReady() ? 'Local WebGPU ready' : 'Local model not loaded');
+  } else if (mode === 'cloud') {
+    const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'API';
+    setModelStatus('ready', `Cloud API (${provider.toUpperCase()})`);
+  } else {
+    setModelStatus('ready', 'Instant Rule Engine ready (0MB)');
+  }
+}
+
+// ══════════════
 // Analysis Flow
 // ══════════════
 async function runAnalysis() {
@@ -249,28 +382,63 @@ async function runAnalysis() {
     return;
   }
 
+  const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'gemini';
+  const apiKey = getSavedApiKey(provider);
+
+  // Check Cloud mode prerequisite
+  if (currentEngineMode === 'cloud' && !apiKey) {
+    showView('input');
+    if (dom.cloudConfigDrawer) dom.cloudConfigDrawer.classList.remove('hidden');
+    dom.inputHint.textContent = `Please enter and save your API key for ${provider.toUpperCase()} mode.`;
+    if (dom.cloudApiKey) dom.cloudApiKey.focus();
+    return;
+  }
+
   isAnalyzing = true;
   dom.analyzeBtn.disabled = true;
   dom.inputHint.textContent = '';
 
   showView('progress');
-  setProgress('Preparing model…', 'This may take a moment on the first run.', 0);
-  setModelStatus('loading', 'Loading model…');
+
+  if (currentEngineMode === 'local') {
+    setProgress('Preparing WebGPU model…', 'Downloading/verifying weights on your GPU (first time takes ~30s)…', 0);
+    setModelStatus('loading', 'Loading WebGPU model…');
+  } else if (currentEngineMode === 'cloud') {
+    setProgress('Cloud Turbo…', `Contacting ${provider.toUpperCase()} API for instant analysis…`, 0.4);
+    setModelStatus('loading', `Calling ${provider.toUpperCase()}…`);
+  } else {
+    setProgress('Analyzing…', 'Running instantaneous deterministic heuristic rules…', 0.8);
+    setModelStatus('loading', 'Processing rules…');
+  }
 
   const targetUser = dom.targetUserInput ? dom.targetUserInput.value.trim() : null;
 
   try {
-    const result = await analyzeConversation(currentMessages, (info) => {
-      setProgress('Loading model…', info.text, info.progress);
-    }, targetUser);
+    const options = {
+      mode: currentEngineMode,
+      apiProvider: provider,
+      apiKey: apiKey,
+      customEndpoint: dom.cloudCustomEndpoint ? dom.cloudCustomEndpoint.value.trim() : ''
+    };
 
-    setModelStatus('ready', 'Model ready');
+    const result = await analyzeConversation(currentMessages, (info) => {
+      setProgress('Processing…', info.text, info.progress);
+    }, targetUser, options);
+
+    if (currentEngineMode === 'local') {
+      setModelStatus('ready', 'WebGPU Ready');
+    } else if (currentEngineMode === 'cloud') {
+      setModelStatus('ready', `${provider.toUpperCase()} Ready`);
+    } else {
+      setModelStatus('ready', 'Rules Ready');
+    }
+
     renderResults(result);
     showView('results');
 
   } catch (err) {
     console.error('Analysis failed:', err);
-    setModelStatus('error', 'Model error');
+    setModelStatus('error', 'Analysis error');
     showError(err.message || 'An unknown error occurred during analysis.');
   } finally {
     dom.analyzeBtn.disabled = false;
@@ -637,5 +805,101 @@ if (dom.targetUserInput) {
     localStorage.setItem('catchup_target_user', dom.targetUserInput.value.trim());
   });
 }
+
+// ══════════════
+// Engine Mode Switcher Wiring & Persistence
+// ══════════════
+if (dom.optModeLocal) {
+  dom.optModeLocal.addEventListener('click', () => setEngineMode('local'));
+}
+if (dom.optModeCloud) {
+  dom.optModeCloud.addEventListener('click', () => setEngineMode('cloud'));
+}
+if (dom.optModeHeuristic) {
+  dom.optModeHeuristic.addEventListener('click', () => setEngineMode('heuristic'));
+}
+
+// Provider select change
+if (dom.cloudProviderSelect) {
+  const savedProvider = localStorage.getItem('catchup_cloud_provider') || 'gemini';
+  dom.cloudProviderSelect.value = savedProvider;
+  dom.cloudProviderSelect.addEventListener('change', () => {
+    localStorage.setItem('catchup_cloud_provider', dom.cloudProviderSelect.value);
+    updateKeyStatusDisplay();
+  });
+}
+
+// Custom endpoint input change
+if (dom.cloudCustomEndpoint) {
+  const savedEndpoint = localStorage.getItem('catchup_custom_endpoint') || '';
+  dom.cloudCustomEndpoint.value = savedEndpoint;
+  dom.cloudCustomEndpoint.addEventListener('input', () => {
+    localStorage.setItem('catchup_custom_endpoint', dom.cloudCustomEndpoint.value.trim());
+  });
+}
+
+// Save Key Button
+if (dom.saveApiKeyBtn && dom.cloudApiKey) {
+  dom.saveApiKeyBtn.addEventListener('click', () => {
+    const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'gemini';
+    const key = dom.cloudApiKey.value.trim();
+    if (!key) {
+      dom.inputHint.textContent = 'Please enter a valid API key.';
+      return;
+    }
+    saveApiKey(provider, key);
+    dom.inputHint.textContent = '';
+    dom.saveApiKeyBtn.textContent = '✓ Saved!';
+    setTimeout(() => {
+      if (dom.saveApiKeyBtn) dom.saveApiKeyBtn.textContent = 'Save Key';
+    }, 2000);
+  });
+
+  dom.cloudApiKey.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      dom.saveApiKeyBtn.click();
+    }
+  });
+}
+
+// Clear Key Button
+if (dom.clearApiKeyBtn) {
+  dom.clearApiKeyBtn.addEventListener('click', () => {
+    const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'gemini';
+    saveApiKey(provider, '');
+    dom.cloudApiKey.value = '';
+    dom.inputHint.textContent = '';
+  });
+}
+
+// Key Visibility Toggle
+if (dom.keyToggleBtn && dom.cloudApiKey) {
+  dom.keyToggleBtn.addEventListener('click', () => {
+    const isPw = dom.cloudApiKey.type === 'password';
+    dom.cloudApiKey.type = isPw ? 'text' : 'password';
+    dom.keyToggleBtn.textContent = isPw ? '🔒' : '👁️';
+  });
+}
+
+// Initial engine mode setup
+setEngineMode(currentEngineMode);
+updateKeyStatusDisplay();
+
+// Check WebGPU hardware capabilities silently
+checkWebGPUSupport().then(gpu => {
+  if (!gpu.supported) {
+    console.info('WebGPU not detected:', gpu.reason);
+    if (dom.hardwareAlertBanner && dom.hardwareAlertText) {
+      dom.hardwareAlertBanner.classList.remove('hidden');
+      dom.hardwareAlertText.textContent = `WebGPU not available on this browser (${gpu.reason}). Defaulting to Instant Rule Engine or Cloud Turbo.`;
+    }
+    if (currentEngineMode === 'local') {
+      setEngineMode('heuristic');
+    }
+  }
+}).catch(err => {
+  console.warn('WebGPU check threw:', err);
+});
 
 updateCharCount();

@@ -296,5 +296,39 @@ runTest('TargetUser matching when sender is null/missing',
   }
 );
 
-console.log('\nAll tests completed successfully.');
+// 24. Instant Heuristic Rule Engine execution via analyzeConversation
+(async () => {
+  process.stdout.write('Running: Instant Heuristic Rule Engine execution (analyzeConversation)... ');
+  try {
+    const engineCode = fs.readFileSync('engine.js', 'utf8')
+      .replace(/import\s+[^;]+;/g, '')
+      .replace(/export async function/g, 'async function')
+      .replace(/export function/g, 'function')
+      .replace(/export /g, '');
+    const engineFn = new Function('extractDeterministicFindings', 'dedupe', engineCode + '\nreturn { analyzeConversation, checkWebGPUSupport };');
+    const { analyzeConversation, checkWebGPUSupport } = engineFn(extractDeterministicFindings, dedupe);
+
+    const testMsgs = [
+      createMsg('35', 'Alice', 'We need to decide the deployment window.'),
+      createMsg('36', 'Bob', 'I will prepare the production migration scripts.'),
+      createMsg('37', 'Charlie', 'We decided to ship next Monday at 10 AM.'),
+      createMsg('38', 'Dave', 'Who will verify the payment webhooks?')
+    ];
+
+    const result = await analyzeConversation(testMsgs, null, null, { mode: 'heuristic' });
+    assert.strictEqual(result.action_items.length, 1);
+    assert.strictEqual(result.action_items[0].owner, 'Bob');
+    assert.strictEqual(result.decisions.length, 1);
+    assert.strictEqual(result.open_questions.length, 1);
+    assert.ok(result.summary_points.length >= 1);
+    assert.strictEqual(typeof checkWebGPUSupport, 'function');
+    process.stdout.write('✅\n');
+    console.log('\nAll tests completed successfully.');
+  } catch (err) {
+    process.stdout.write('❌\n');
+    console.error(`  Error in Heuristic Engine test: ${err.message}`);
+    process.exit(1);
+  }
+})();
+
 

@@ -2,9 +2,9 @@
 ### 100% In-Browser AI Conversation Analyst & Executive Triage Console
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-113%2F113_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
-[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_Instruct-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-114%2F114_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
+[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_1.5_Flash-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
 
 > **CatchUp** turns chaotic, 200+ message chat dumps (Slack, WhatsApp, Teams, Discord) into an organized, prioritized executive dashboard in seconds — running **100% privately in your browser** using on-device WebGPU inference. Zero server APIs. Zero data leaks.
@@ -14,6 +14,7 @@
 ## 📑 Table of Contents
 
 - [The Core Problem & Walkaway](#-the-core-problem--walkaway)
+- [Processing Engines: Local vs Cloud vs Instant](#-processing-engines-local-vs-cloud-vs-instant)
 - [Key Features](#-key-features)
 - [System Architecture](#-system-architecture)
 - [Why Hybrid AI? (Neural + Heuristic)](#-why-hybrid-ai-neural--heuristic)
@@ -34,10 +35,36 @@ In modern remote work and hackathons, team members return from meetings, lunches
 Traditional solutions require sending confidential company transcripts to third-party cloud LLM APIs (OpenAI, Anthropic), creating **severe data privacy, compliance, and IP leakage liabilities**.
 
 ### The Walkaway (Value Proposition)
-CatchUp delivers a complete **Executive Triage Console** with **zero data transmission**:
-1. **Total Privacy Guarantee**: The conversation transcript **never leaves the user's browser**. Model weights download once via WebGPU/CDN and run on the local GPU.
-2. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
-3. **Zero Hallucination with Source Grounding**: Every extracted deliverable, task, decision, and question is strictly validated and linked to its exact source message and sender.
+CatchUp delivers a complete **Executive Triage Console** tailored to user privacy needs:
+1. **Total Privacy Guarantee (Local Hero)**: The conversation transcript **never leaves the user's browser**. Model weights run 100% locally via WebGPU shaders.
+2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 1.5 Flash, Groq, OpenAI) or an instant 5ms deterministic rule engine.
+3. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
+4. **Zero Hallucination with Source Grounding**: Every extracted deliverable, task, decision, and question is strictly validated against the source text character-by-character.
+
+---
+
+## ⚙️ Processing Engines: Local vs Cloud vs Instant
+
+CatchUp empowers users to pick the ideal execution profile right from the top navigation bar:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Processing Engine:                                                         │
+│  [🛡️ Local Private (WebGPU)]*   [⚡ Cloud Turbo (API)]    [⏱️ Instant Rules] │
+└─────────────────────────────────────────────────────────────────────────────┘
+  * Hero Default (Runs 100% on-device inside your browser)
+```
+
+| Engine Mode | Execution Runtime | Privacy Level | Speed / Latency | Best Used For |
+| :--- | :--- | :--- | :--- | :--- |
+| 🛡️ **Local Private** *(Default)* | **WebGPU** / Llama 3.2 1B Instruct via WebLLM | **100% On-Device** (Zero data leaves browser) | Initial load ~1.5GB model cache; inference ~2-5s | **Sensitive conversations**, enterprise IP, proprietary code, GDPR/HIPAA compliance |
+| ⚡ **Cloud Turbo** | **Direct Client API** (Gemini 1.5 Flash, Groq Llama 3.1, OpenAI GPT-4o-mini) | **Direct to Provider** (Zero intermediate servers, BYOK) | Lightning fast (<1.5s total turnaround) | Non-sensitive transcripts, large threads, low-spec devices without WebGPU |
+| ⏱️ **Instant Rules** | **Pure JavaScript** Deterministic Heuristic Engine | **100% Offline** (Zero network, zero download) | **~5ms instant** | Immediate triage, mobile browsers, emergency fallback if WebGPU is unsupported |
+
+> [!NOTE]
+> **Hardware Auto-Detection**: CatchUp automatically checks WebGPU support (`navigator.gpu.requestAdapter()`) on page load. If WebGPU is not supported by your hardware or browser, an informative alert appears and CatchUp smoothly transitions you to Instant Rules or Cloud Turbo mode without breaking.
+>
+> **BYOK Security**: All cloud API keys are saved purely in your browser's private `localStorage` (`catchup_api_key_*`). Keys are never sent to our servers, never logged, and never included in Git commits. Cloud outputs still pass through CatchUp's strict quote validation and deduplication pipeline.
 
 ---
 
@@ -168,7 +195,7 @@ d:\PALS_\
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **113 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **114 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
@@ -179,7 +206,7 @@ node test_regression/adversarial.js
 
 ### Breakdown of Test Suites:
 
-1. **`runner.js` (23 Contract Tests)**:
+1. **`runner.js` (24 Contract & Engine Tests)**:
    - Explicit assignee vs. sender recognition (`@Bob I will do it` → owner: Bob).
    - Non-assignment mention filtering.
    - Dynamic `targetUser` matching and null-fallback routing.
@@ -187,6 +214,7 @@ node test_regression/adversarial.js
    - Vague hedge filtering (`"I will think about it"` / `"We will see"` excluded).
    - URL query parameter isolation (`?` in URLs does not trigger open questions).
    - Malformed message payload and null-sender resilience.
+   - Heuristic instant engine execution via `analyzeConversation` with hardware detection checks.
 
 2. **`deep_stress.js` (62 Stress Tests)**:
    - Category 1: `parseConversation` formats (standard, WhatsApp, timestamps, multiline).
@@ -229,16 +257,18 @@ npx serve .
 Open your browser at `http://localhost:8000`.
 
 ### Using the Application
-1. **Target User (Optional)**: Enter your name (e.g. `Alice` or `@Alice`) in the target user input to personalize high-priority alerts under **Needs You**.
-2. **Load Conversation**: Click **"Load sample"** to test with our built-in hackathon planning transcript, paste your own text, or drop a `.md` / `.txt` file into the dropzone.
-3. **Analyze**: Click **"Analyze Conversation"**. On the initial run, the WebLLM engine caches model weights (~1.5GB) directly into your browser's CacheStorage.
-4. **Triage & Export**: Use the view tabs to review tasks and decisions, toggle completed checkboxes, and click **"Copy Markdown"** or **"Download .md"** to export your meeting minutes.
+1. **Choose Engine Profile**: Choose **🛡️ Local Private** (default WebGPU) for confidential data, **⚡ Cloud Turbo** (Gemini/Groq/OpenAI) for fast BYOK inference, or **⏱️ Instant Rules** for instant 5ms extraction.
+2. **Target User (Optional)**: Enter your name (e.g. `Alice` or `@Alice`) in the target user input to personalize high-priority alerts under **Needs You**.
+3. **Load Conversation**: Click **"Load sample"** to test with our built-in hackathon planning transcript, paste your own text, or drop a `.md` / `.txt` file into the dropzone.
+4. **Analyze**: Click **"Analyze Conversation"**.
+5. **Triage & Export**: Use the view tabs to review tasks and decisions, toggle completed checkboxes, and click **"Copy Markdown"** or **"Download .md"** to export your meeting minutes.
 
 ---
 
 ## 🔒 Security & Privacy Blueprint
 
-- **Zero Remote Telemetry**: CatchUp transmits 0 bytes of conversation data over the network. All inference occurs in WebGPU shaders on your machine.
+- **Zero Remote Telemetry (Local Mode)**: CatchUp transmits 0 bytes of conversation data over the network in Local Private mode. All inference occurs in WebGPU shaders on your machine.
+- **Client-Side Secret Storage (Cloud Mode)**: When using Cloud Turbo, user API keys are stored exclusively in the browser's origin-scoped `localStorage`. No proxy server, logging, or token sniffing is ever performed.
 - **XSS Immunity (Safe DOM Only)**: Model and user strings are strictly inserted using `node.textContent` and `document.createElement`. No `innerHTML` or `eval` execution of external or AI-generated strings.
 - **Hardened Deployment**: Configured via `vercel.json` with strict HTTP security headers:
   - `X-Content-Type-Options: nosniff`
@@ -251,8 +281,8 @@ Open your browser at `http://localhost:8000`.
 
 Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
 
-* **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator.
-* **Frontend & UI/UX**: Executive triage dashboard, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 113-test regression harness, adversarial stress testing.
+* **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
+* **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
+* **Testing & Hardening**: 114-test regression harness, adversarial stress testing.
 
 *CatchUp — Catch up on what matters, 100% on your device.*

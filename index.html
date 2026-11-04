@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchUp — Catch up on what matters</title>
   <meta name="description" content="CatchUp analyzes your conversations locally using AI. No data leaves your device.">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap" rel="stylesheet">
@@ -94,6 +94,110 @@
               </p>
             </div>
 
+            <!-- Engine Mode Selector -->
+            <div class="engine-mode-card" id="engine-mode-card">
+              <div class="engine-mode-header">
+                <div class="engine-mode-header-left">
+                  <svg class="engine-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                  <span class="engine-mode-title">Processing Mode</span>
+                </div>
+                <span class="engine-badge badge-local" id="engine-status-badge">100% On-Device WebGPU</span>
+              </div>
+
+              <div class="engine-mode-grid" role="radiogroup" aria-label="Processing Mode">
+                <!-- Option 1: Local WebGPU -->
+                <label class="engine-option-pill active" id="opt-mode-local">
+                  <input type="radio" name="engine-mode" value="local" checked class="mode-radio" />
+                  <div class="option-pill-content">
+                    <div class="option-pill-top">
+                      <span class="option-emoji">🛡️</span>
+                      <span class="option-label">Local Private</span>
+                      <span class="option-tag tag-primary">Default</span>
+                    </div>
+                    <span class="option-sub">Llama 3.2 via WebGPU · Zero data leaves device</span>
+                  </div>
+                </label>
+
+                <!-- Option 2: Cloud Turbo -->
+                <label class="engine-option-pill" id="opt-mode-cloud">
+                  <input type="radio" name="engine-mode" value="cloud" class="mode-radio" />
+                  <div class="option-pill-content">
+                    <div class="option-pill-top">
+                      <span class="option-emoji">⚡</span>
+                      <span class="option-label">Cloud Turbo</span>
+                      <span class="option-tag tag-api">API Key</span>
+                    </div>
+                    <span class="option-sub">Gemini or OpenAI/Groq · Instant for large chats</span>
+                  </div>
+                </label>
+
+                <!-- Option 3: Instant Rule Engine -->
+                <label class="engine-option-pill" id="opt-mode-heuristic">
+                  <input type="radio" name="engine-mode" value="heuristic" class="mode-radio" />
+                  <div class="option-pill-content">
+                    <div class="option-pill-top">
+                      <span class="option-emoji">⏱️</span>
+                      <span class="option-label">Instant Rules</span>
+                      <span class="option-tag tag-fast">5ms</span>
+                    </div>
+                    <span class="option-sub">Deterministic NLP · 0MB download · Any device</span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Collapsible Cloud API Config Drawer -->
+              <div class="cloud-config-drawer hidden" id="cloud-config-drawer">
+                <div class="cloud-drawer-header">
+                  <span class="cloud-drawer-title">Cloud API Settings (Saved strictly in your browser)</span>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="cloud-key-link" id="cloud-key-help-link">
+                    Get free Gemini API Key ↗
+                  </a>
+                </div>
+
+                <div class="cloud-drawer-inputs">
+                  <div class="cloud-input-group">
+                    <label for="cloud-provider-select" class="cloud-field-label">Provider</label>
+                    <select id="cloud-provider-select" class="cloud-select">
+                      <option value="gemini" selected>Google Gemini (gemini-1.5-flash) — Recommended</option>
+                      <option value="groq">Groq (llama-3.1-8b-instant) — Ultra-fast</option>
+                      <option value="openai">OpenAI (gpt-4o-mini)</option>
+                      <option value="custom">Custom Endpoint (Ollama / Proxy)</option>
+                    </select>
+                  </div>
+
+                  <div class="cloud-input-group flex-2">
+                    <label for="cloud-api-key" class="cloud-field-label">API Key</label>
+                    <div class="cloud-key-input-wrapper">
+                      <input type="password" id="cloud-api-key" class="cloud-text-input" placeholder="Paste your API key here (e.g. AIzaSy...)" autocomplete="off" />
+                      <button type="button" class="key-toggle-btn" id="key-toggle-btn" title="Toggle visibility">👁️</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="cloud-custom-endpoint-row hidden" id="cloud-custom-endpoint-row">
+                  <label for="cloud-custom-endpoint" class="cloud-field-label">Custom Endpoint URL</label>
+                  <input type="text" id="cloud-custom-endpoint" class="cloud-text-input" placeholder="http://localhost:11434/v1/chat/completions" />
+                </div>
+
+                <div class="cloud-drawer-footer">
+                  <div class="cloud-key-status" id="cloud-key-status">
+                    <span class="status-indicator-dot dot-gray" id="key-status-dot"></span>
+                    <span id="key-status-text">No API key saved</span>
+                  </div>
+                  <div class="cloud-drawer-actions">
+                    <button type="button" class="text-btn text-danger" id="clear-api-key-btn">Clear Key</button>
+                    <button type="button" class="secondary-btn" id="save-api-key-btn">Save Key</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hardware Alert Banner (if WebGPU unsupported) -->
+              <div class="hardware-alert-banner hidden" id="hardware-alert-banner">
+                <span class="alert-banner-icon">ℹ️</span>
+                <span class="alert-banner-text" id="hardware-alert-text">WebGPU is not detected on this browser. Switched to Instant Rules or Cloud Turbo.</span>
+              </div>
+            </div>
+
             <div id="file-drop-zone" class="file-drop-zone">
               <input type="file" id="file-input" accept=".md,.txt" style="display: none;" />
               <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 16 4-4 4 4"/></svg>
@@ -113,7 +217,7 @@
               <div class="footer-left">
                 <p class="privacy-note">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  100% Local Inference. Your data never leaves your device.
+                  <span id="privacy-note-text">100% Local Inference. Your data never leaves your device.</span>
                 </p>
                 <p class="input-hint" id="input-hint"></p>
               </div>
@@ -335,6 +439,6 @@
   </div>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-  <script type="module" src="app.js?v=10"></script>
+  <script type="module" src="app.js?v=11"></script>
 </body>
 </html>

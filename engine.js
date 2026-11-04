@@ -108,30 +108,162 @@ Rules:
 - Output ONLY the requested data format.`;
 
 /**
+ * Detect whether WebGPU is supported and available on this device/browser.
+ * @returns {Promise<{supported: boolean, reason?: string}>}
+ */
+export async function checkWebGPUSupport() {
+  if (typeof navigator === 'undefined' || !navigator.gpu) {
+    return { supported: false, reason: "WebGPU is not enabled or supported by this browser." };
+  }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+      return { supported: false, reason: "No compatible WebGPU hardware adapter found." };
+    }
+    return { supported: true };
+  } catch (err) {
+    return { supported: false, reason: err.message || "Failed to initialize WebGPU adapter." };
+  }
+}
+
+/**
  * Run analysis on parsed messages.
  * @param {Array<{id: string, sender: string, text: string}>} messages
  * @param {function} onProgress - Called with { text, progress }
  * @param {string|null} targetUser - Optional name to focus "Needs You" attention detection
+ * @param {object} options - Optional execution config: { mode: 'local'|'cloud'|'heuristic', apiKey, apiProvider, customEndpoint, model }
  * @returns {Promise<object>} Validated analysis result
  */
-export async function analyzeConversation(messages, onProgress, targetUser = null) {
-  const engine = await initEngine(onProgress);
+export async function analyzeConversation(messages, onProgress, targetUser = null, options = {}) {
+  const mode = options.mode || 'local';
+
+  // ── Mode: Instant Heuristic Rule Engine (Zero-download, ~5ms) ───────────
+  if (mode === 'heuristic') {
+    if (onProgress) onProgress({ text: "Extracting findings with instant rule engine…", progress: 0.8 });
+    const { fallbackNeedsYou, fallbackActions, fallbackDecisions, fallbackQuestions } = extractDeterministicFindings(messages, targetUser);
+
+    const summaryPoints = [];
+    const participants = Array.from(new Set(messages.map(m => m.sender).filter(Boolean)));
+    if (participants.length > 0) {
+      summaryPoints.push(`Conversation between ${participants.slice(0, 4).join(', ')}${participants.length > 4 ? ' and others' : ''} spanning ${messages.length} messages.`);
+    }
+    if (fallbackActions.length > 0) {
+      const owners = Array.from(new Set(fallbackActions.map(a => a.owner).filter(Boolean)));
+      summaryPoints.push(`Identified ${fallbackActions.length} action item${fallbackActions.length !== 1 ? 's' : ''}${owners.length > 0 ? ` assigned across ${owners.join(', ')}` : ''}.`);
+    }
+    if (fallbackDecisions.length > 0) {
+      summaryPoints.push(`Recorded ${fallbackDecisions.length} confirmed decision${fallbackDecisions.length !== 1 ? 's' : ''}.`);
+    }
+    if (fallbackQuestions.length > 0) {
+      summaryPoints.push(`Tracked ${fallbackQuestions.length} open item${fallbackQuestions.length !== 1 ? 's' : ''} / blocker${fallbackQuestions.length !== 1 ? 's' : ''} needing resolution.`);
+    }
+    if (summaryPoints.length === 0) {
+      summaryPoints.push("Discussion completed with no high-priority blockers or open questions.");
+    }
+
+    return {
+      needs_you: fallbackNeedsYou,
+      summary_points: summaryPoints,
+      action_items: fallbackActions,
+      decisions: fallbackDecisions,
+      open_questions: fallbackQuestions
+    };
+  }
 
   const convText = messages.map(c => `[${c.id}] ${c.sender}: ${c.text}`).join('\n');
+  let replyText = '';
 
-  const chatMessages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze this conversation:\n\n${convText}` }
-  ];
+  // ── Mode: Cloud Turbo API (Gemini or OpenAI/Groq compatible) ────────────
+  if (mode === 'cloud') {
+    const apiKey = options.apiKey?.trim();
+    if (!apiKey) {
+      throw new Error("Cloud Turbo mode requires an API key. Please enter your API key in the engine settings.");
+    }
 
-  const reply = await engine.chat.completions.create({
-    messages: chatMessages,
-    temperature: 0.1,
-    max_tokens: 2048,
-    response_format: { type: "text" }
-  });
+    const provider = options.apiProvider || 'gemini';
 
-  const replyText = reply.choices[0].message.content;
+    if (provider === 'gemini') {
+      if (onProgress) onProgress({ text: "Connecting to Gemini 1.5 Flash API…", progress: 0.4 });
+      const model = options.model || 'gemini-1.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [{ text: `${SYSTEM_PROMPT}\n\nAnalyze this conversation:\n\n${convText}` }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(`Gemini API Error (${res.status}): ${errJson.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!replyText) throw new Error("Gemini returned empty response content.");
+
+    } else {
+      // Groq, OpenAI, or Custom endpoint
+      const isGroq = provider === 'groq';
+      const endpoint = isGroq 
+        ? 'https://api.groq.com/openai/v1/chat/completions' 
+        : (options.customEndpoint || 'https://api.openai.com/v1/chat/completions');
+      const model = isGroq ? 'llama-3.1-8b-instant' : (options.model || 'gpt-4o-mini');
+
+      if (onProgress) onProgress({ text: `Calling ${isGroq ? 'Groq' : 'OpenAI'} API (${model})…`, progress: 0.4 });
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Analyze this conversation:\n\n${convText}` }
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(`API Error (${res.status}): ${errJson.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      replyText = data.choices?.[0]?.message?.content;
+      if (!replyText) throw new Error("Model returned empty response content.");
+    }
+
+  } else {
+    // ── Mode: Local Private WebGPU (Default) ───────────────────────────────
+    const engine = await initEngine(onProgress);
+
+    const chatMessages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `Analyze this conversation:\n\n${convText}` }
+    ];
+
+    const reply = await engine.chat.completions.create({
+      messages: chatMessages,
+      temperature: 0.1,
+      max_tokens: 2048,
+      response_format: { type: "text" }
+    });
+
+    replyText = reply.choices[0].message.content;
+  }
 
   // Parse JSON with fallback for markdown-wrapped output
   let parsed;
