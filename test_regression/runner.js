@@ -305,8 +305,8 @@ runTest('TargetUser matching when sender is null/missing',
       .replace(/export async function/g, 'async function')
       .replace(/export function/g, 'function')
       .replace(/export /g, '');
-    const engineFn = new Function('extractDeterministicFindings', 'dedupe', engineCode + '\nreturn { analyzeConversation, checkWebGPUSupport };');
-    const { analyzeConversation, checkWebGPUSupport } = engineFn(extractDeterministicFindings, dedupe);
+    const engineFn = new Function('extractDeterministicFindings', 'dedupe', engineCode + '\nreturn { analyzeConversation, checkWebGPUSupport, parseConversation };');
+    const { analyzeConversation, checkWebGPUSupport, parseConversation } = engineFn(extractDeterministicFindings, dedupe);
 
     const testMsgs = [
       createMsg('35', 'Alice', 'We need to decide the deployment window.'),
@@ -323,6 +323,53 @@ runTest('TargetUser matching when sender is null/missing',
     assert.ok(result.summary_points.length >= 1);
     assert.strictEqual(typeof checkWebGPUSupport, 'function');
     process.stdout.write('✅\n');
+
+    // 25. Direct substantive answer resolves open question
+    process.stdout.write('Running: Direct substantive answer resolves question without positive-ack... ');
+    const choiceMsgs = [
+      createMsg('39', 'Bob', 'Should we use React or keep it vanilla JS?'),
+      createMsg('40', 'Alice', 'Let\'s keep it simple for now. Vanilla JS unless we hit a wall.')
+    ];
+    const choiceFindings = extractDeterministicFindings(choiceMsgs);
+    assert.strictEqual(choiceFindings.fallbackQuestions.length, 0, 'Direct substantive answer should resolve question');
+    assert.strictEqual(choiceFindings.fallbackDecisions.length, 1, 'Agreed proposal should register as decision');
+    process.stdout.write('✅\n');
+
+    // 26. Built-in Sample Conversation multi-engine alignment benchmark
+    process.stdout.write('Running: Built-in Sample Conversation multi-engine benchmark... ');
+    const sampleText = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
+Bob: I can't make 10 AM, I have a dentist appointment. Can we do 1 PM instead?
+Charlie: 1 PM works for me. We need to decide on the tech stack. I'm thinking we use WebLLM for the AI component.
+Alice: Sounds good. Bob, can you look into the WebLLM documentation before we meet?
+Bob: Will do. Also, should we use React or keep it vanilla JS?
+Alice: Let's keep it simple for now. Vanilla JS unless we hit a wall.
+Charlie: Agreed. Who's handling the UI design? I can do it if nobody else wants to.
+Alice: That would be great, Charlie. I'll focus on the AI integration then.
+Bob: Perfect. See you both at 1 PM tomorrow.
+Charlie: One more thing — do we have access to the hackathon API credentials yet?
+Alice: Not yet. I'll email the organizers today and ask.`;
+
+    const parsedSample = parseConversation(sampleText);
+    const sampleResult = await analyzeConversation(parsedSample, null, null, { mode: 'heuristic' });
+
+    // Verify all 3 team members' action items
+    assert.ok(sampleResult.action_items.length >= 3, 'Must capture at least 3 action items across team');
+    const owners = sampleResult.action_items.map(a => a.owner);
+    assert.ok(owners.includes('Bob'), 'Must capture Bob task');
+    assert.ok(owners.includes('Charlie'), 'Must capture Charlie task');
+    assert.ok(owners.includes('Alice'), 'Must capture Alice task');
+
+    // Verify decisions
+    assert.ok(sampleResult.decisions.length >= 2, 'Must capture decisions made');
+
+    // Verify open questions captures only the genuine blocker
+    assert.strictEqual(sampleResult.open_questions.length, 1, 'Only API credentials should remain an open blocker');
+    assert.ok(sampleResult.open_questions[0].quote.includes('credentials'), 'Credentials blocker must be tracked');
+
+    // Verify rich synthesized executive summary
+    assert.ok(sampleResult.summary_points.length >= 3, 'Summary must synthesize at least 3 executive briefing points');
+    process.stdout.write('✅\n');
+
     console.log('\nAll tests completed successfully.');
   } catch (err) {
     process.stdout.write('❌\n');
@@ -330,5 +377,6 @@ runTest('TargetUser matching when sender is null/missing',
     process.exit(1);
   }
 })();
+
 
 

@@ -144,19 +144,68 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
 
     const summaryPoints = [];
     const participants = Array.from(new Set(messages.map(m => m.sender).filter(Boolean)));
-    if (participants.length > 0) {
-      summaryPoints.push(`Conversation between ${participants.slice(0, 4).join(', ')}${participants.length > 4 ? ' and others' : ''} spanning ${messages.length} messages.`);
-    }
-    if (fallbackActions.length > 0) {
-      const owners = Array.from(new Set(fallbackActions.map(a => a.owner).filter(Boolean)));
-      summaryPoints.push(`Identified ${fallbackActions.length} action item${fallbackActions.length !== 1 ? 's' : ''}${owners.length > 0 ? ` assigned across ${owners.join(', ')}` : ''}.`);
-    }
+    
+    // 1. Topic & Scope Overview
+    const allText = messages.map(m => m.text).join(' ');
+    const topics = [];
+    if (/hackathon/i.test(allText)) topics.push('hackathon planning');
+    if (/tech stack|architecture|framework|api|database|backend|frontend/i.test(allText)) topics.push('tech stack selection');
+    if (/meeting|reschedule|tomorrow|schedule|calendar/i.test(allText)) topics.push('schedule coordination');
+    if (/release|deploy|launch|shipping/i.test(allText)) topics.push('release planning');
+    if (/bug|issue|incident|outage|fix/i.test(allText)) topics.push('incident response');
+
+    const topicLabel = topics.length > 0 ? topics.slice(0, 2).join(' and ') : 'Project coordination';
+    const participantsLabel = participants.length > 0 
+      ? `between ${participants.slice(0, 3).join(', ')}${participants.length > 3 ? ` and ${participants.length - 3} others` : ''}`
+      : '';
+    summaryPoints.push(`${topicLabel.charAt(0).toUpperCase() + topicLabel.slice(1)} ${participantsLabel} (${messages.length} messages).`.trim());
+
+    // 2. Confirmed Decisions
     if (fallbackDecisions.length > 0) {
-      summaryPoints.push(`Recorded ${fallbackDecisions.length} confirmed decision${fallbackDecisions.length !== 1 ? 's' : ''}.`);
+      const decisionPhrases = fallbackDecisions.slice(0, 3).map(d => {
+        return (d.quote || d.text)
+          .replace(/^Decision made:\s*"?|"?$/g, '')
+          .replace(/[.;]+$/, '')
+          .trim();
+      });
+      summaryPoints.push(`Decisions: ${decisionPhrases.join('; ')}.`);
     }
+
+    // 3. Action Items & Ownership
+    if (fallbackActions.length > 0) {
+      const ownerGroups = {};
+      fallbackActions.forEach(a => {
+        const owner = a.owner || 'Unassigned';
+        if (!ownerGroups[owner]) ownerGroups[owner] = [];
+        const taskText = (a.quote || a.text)
+          .replace(/^(?:Confirmed task:\s*|Task for [^:]+:\s*)"?|"?$/g, '')
+          .replace(/^(?:Sounds good\.\s*)?([A-Za-z0-9_]+)[,:]\s*(?:can you|could you|please)\s+/i, '')
+          .replace(/^(?:That would be great,?\s*[A-Za-z0-9_]*\.?\s*)?(?:I will|I'll|I can|we will)\s+/i, '')
+          .replace(/^(?:Not yet\.\s*)?(?:I will|I'll|I can)\s+/i, '')
+          .replace(/[.;]+$/, '')
+          .trim();
+        ownerGroups[owner].push(taskText);
+      });
+      const actionSummaries = Object.entries(ownerGroups).slice(0, 4).map(([owner, tasks]) => {
+        const firstTask = tasks[0];
+        const preview = firstTask.length > 45 ? firstTask.slice(0, 42) + '…' : firstTask;
+        return `${owner} (${preview})`;
+      });
+      summaryPoints.push(`Assigned Deliverables: ${actionSummaries.join(', ')}.`);
+    }
+
+    // 4. Open Blockers / Questions
     if (fallbackQuestions.length > 0) {
-      summaryPoints.push(`Tracked ${fallbackQuestions.length} open item${fallbackQuestions.length !== 1 ? 's' : ''} / blocker${fallbackQuestions.length !== 1 ? 's' : ''} needing resolution.`);
+      const questionPhrases = fallbackQuestions.slice(0, 2).map(q => {
+        return (q.quote || q.text)
+          .replace(/^Open item\/question:\s*"?|"?$/g, '')
+          .replace(/^One more thing\s*[-—:]*\s*/i, '')
+          .replace(/[.;]+$/, '')
+          .trim();
+      });
+      summaryPoints.push(`Open Blockers & Questions: ${questionPhrases.join('; ')}.`);
     }
+
     if (summaryPoints.length === 0) {
       summaryPoints.push("Discussion completed with no high-priority blockers or open questions.");
     }

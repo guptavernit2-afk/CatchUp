@@ -2,7 +2,7 @@
 ### 100% In-Browser AI Conversation Analyst & Executive Triage Console
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-114%2F114_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-116%2F116_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
 [![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_1.5_Flash-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
@@ -195,7 +195,7 @@ d:\PALS_\
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **114 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **116 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
@@ -206,7 +206,7 @@ node test_regression/adversarial.js
 
 ### Breakdown of Test Suites:
 
-1. **`runner.js` (24 Contract & Engine Tests)**:
+1. **`runner.js` (26 Contract & Engine Tests)**:
    - Explicit assignee vs. sender recognition (`@Bob I will do it` → owner: Bob).
    - Non-assignment mention filtering.
    - Dynamic `targetUser` matching and null-fallback routing.
@@ -215,6 +215,8 @@ node test_regression/adversarial.js
    - URL query parameter isolation (`?` in URLs does not trigger open questions).
    - Malformed message payload and null-sender resilience.
    - Heuristic instant engine execution via `analyzeConversation` with hardware detection checks.
+   - Direct substantive answer resolution without positive-ack keywords.
+   - Built-in sample conversation multi-engine benchmark (validating team deliverables, decisions, and open blockers).
 
 2. **`deep_stress.js` (62 Stress Tests)**:
    - Category 1: `parseConversation` formats (standard, WhatsApp, timestamps, multiline).

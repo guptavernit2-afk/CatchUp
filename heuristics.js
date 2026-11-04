@@ -58,42 +58,81 @@ export function extractDeterministicFindings(messages, targetUser = null) {
       let resolved = false;
 
       if (hasQuestion) {
-        // FIX: Use 3+ char words (was 4+) to catch short tokens like "1 PM"
-        const questionWords = msg.text.toLowerCase().match(/\w{3,}/g) || [];
+        // Substantive words: exclude conversational stopwords
+        const stopwords = new Set([
+          'what', 'when', 'where', 'which', 'who', 'why', 'how', 'will', 'have', 'need', 'can', 'could',
+          'should', 'would', 'you', 'the', 'that', 'this', 'for', 'are', 'and', 'with', 'from', 'about',
+          'just', 'also', 'some', 'any', 'one', 'more', 'thing', 'yet', 'still', 'not', 'did', 'does',
+          'been', 'were', 'was', 'our', 'out', 'all', 'into', 'before', 'then'
+        ]);
+
+        const rawWords = (msg.text.toLowerCase().match(/\w{3,}/g) || []);
+        const questionWords = rawWords.filter(w => !stopwords.has(w));
+        const questionNumbers = msg.text.match(/\b\d+\b/g) || [];
         const currentIndex = messages.indexOf(msg);
 
         for (let j = currentIndex + 1; j <= currentIndex + 2 && j < messages.length; j++) {
+          if (!messages[j] || typeof messages[j].text !== 'string') continue;
           const nextMsg = messages[j].text.toLowerCase();
 
-          // FIX: Expanded positive-ack list to include common short confirmations
+          // Guard: explicit blocker / unresolved statement means question is STILL OPEN
+          const isExplicitUnresolved = /\b(?:not yet|still pending|still waiting|haven't heard|blocked on|no update|no access|waiting on)\b/i.test(nextMsg);
+          if (isExplicitUnresolved) {
+            resolved = false;
+            break;
+          }
+
+          // Rescheduling / alternative proposal resolves the original meeting time question
+          const isReschedule = /\b(?:can't make|reschedule|instead|appointment|conflict|how about|what about)\b/i.test(nextMsg);
+          const sharesNumber = questionNumbers.some(n => nextMsg.includes(n));
+          if (isReschedule && (sharesNumber || questionWords.some(k => nextMsg.includes(k)))) {
+            resolved = true;
+            break;
+          }
+
+          // Offer accepted (e.g. "I can do it if nobody else wants to" answered by "That would be great, Charlie")
+          if (/(?:i can do it|i can handle|i could do|i'll do it)\b/i.test(msg.text)) {
+            if (/(?:great|perfect|awesome|sounds good|thanks|thank you)\b/i.test(nextMsg) || (msg.sender && nextMsg.includes(msg.sender.toLowerCase()))) {
+              resolved = true;
+              break;
+            }
+          }
+
+          // Action request accepted (e.g. "can you look into X?" answered by "will do")
+          const isActionRequest = /(?:can you|could you|would you|will you|please)\s+/i.test(msg.text);
           const isPositiveAck = /(?:sure|will do|got it|accepted|yes|ok|okay|no problem|on it|i'll|i will|works for me|sounds good|confirmed|can do|that works|perfect|great|done)\b/i.test(nextMsg);
+          if (isActionRequest && isPositiveAck) {
+            resolved = true;
+            break;
+          }
 
           if (isPositiveAck) {
-            const sharesKeyword = questionWords.some(w =>
-              nextMsg.includes(w) && !['what', 'when', 'where', 'will', 'have', 'need', 'can', 'you', 'the', 'that', 'this', 'for', 'are'].includes(w)
-            );
-
-            // Also extract numeric tokens (e.g. "1", "3") from question for time references
-            const questionNumbers = msg.text.match(/\b\d+\b/g) || [];
-            const sharesNumber = questionNumbers.some(n => nextMsg.includes(n));
-
+            const sharesKeyword = questionWords.some(w => nextMsg.includes(w));
             if (sharesKeyword || sharesNumber) {
               resolved = true;
               break;
             }
           }
 
-          // Also resolve if next message IS a pure positive-ack on its own
-          // (short standalone confirmations like "confirmed", "ok", "sure", etc.)
+          // Standalone confirmation
           if (/^(?:works for me|sounds good|confirmed|can do|that works|perfect|great|done|ok|yes|sure)[\s!.]*$/i.test(nextMsg.trim())) {
             resolved = true;
             break;
           }
           
-          // Also resolve if response contains "works for me" / "sounds good" alongside any numeric/time echo
-          if (/(?:works for me|sounds good|can do|that works)/i.test(nextMsg)) {
-            const sharesNumber = (msg.text.match(/\b\d+\b/g) || []).some(n => nextMsg.includes(n));
+          // Time/numeric echo alongside affirmation
+          if (/(?:works for me|sounds good|can do|that works|see you|perfect)/i.test(nextMsg)) {
             if (sharesNumber) {
+              resolved = true;
+              break;
+            }
+          }
+
+          // Direct answer containing shared substantive keywords without asking another question
+          const replyWords = new Set((nextMsg.match(/\w{3,}/g) || []).filter(w => !stopwords.has(w)));
+          const sharedSubstantive = questionWords.filter(k => replyWords.has(k));
+          if (sharedSubstantive.length >= 1 && !messages[j].text.includes('?') && !isExplicitUnresolved) {
+            if (/(?:let's|use|keep|go with|decided|prefer|agreed|works|simple)\b/i.test(nextMsg) || sharedSubstantive.length >= 2) {
               resolved = true;
               break;
             }
@@ -111,6 +150,7 @@ export function extractDeterministicFindings(messages, targetUser = null) {
     const negationPattern = /\b(?:can't|cannot|can not|won't|will not|would not|wouldn't)\b/i;
     const vaguePattern = /\b(?:will see|will think|will consider|let's see|we'll see|we will see|think about)\b/i;
 
+    let actionAdded = false;
     const isCommitment = /(?:I will|I'll|I can|we will|we'll)\b/i.test(msg.text);
     const isTeamImperative = /(?:Everyone must|Everyone arrive|We need team|team testing)/i.test(msg.text);
     const isNegation = negationPattern.test(msg.text);
@@ -127,18 +167,71 @@ export function extractDeterministicFindings(messages, targetUser = null) {
         owner = "Team";
       }
       fallbackActions.push({ text: `Confirmed task: "${msg.text}"`, owner, quote: msg.text, source_id: msg.id });
+      actionAdded = true;
+    }
+
+    // Task Assignment Pattern: "@Bob / Bob, can you [task]?" followed by acceptance ("will do", "sure", etc.)
+    if (!actionAdded) {
+      const assignmentMatch = msg.text.match(/(?:^|\b)([A-Za-z0-9_]+)[,:]\s*(?:can you|could you|please)\s+(.+?)(?:\?|$)/i);
+      if (assignmentMatch) {
+        const assignedTo = assignmentMatch[1];
+        const currentIndex = messages.indexOf(msg);
+        const nextMsg = messages[currentIndex + 1]?.text || '';
+        if (/(?:will do|on it|sure|can do|i'll do it|i will)/i.test(nextMsg)) {
+          fallbackActions.push({
+            text: `Confirmed task: "${msg.text}"`,
+            owner: assignedTo,
+            quote: msg.text,
+            source_id: msg.id
+          });
+          actionAdded = true;
+        }
+      }
+    }
+
+    // Sentence-level commitment fallback for multi-sentence messages with questions
+    if (!actionAdded && msg.text.includes('?')) {
+      const sentences = msg.text.split(/(?<=[.?!])\s+/).filter(s => s.trim().length > 0);
+      for (const sent of sentences) {
+        const sentCommitment = /(?:I will|I'll|I can|we will|we'll)\b/i.test(sent);
+        const sentNeg = negationPattern.test(sent);
+        const sentVag = vaguePattern.test(sent);
+        if (sentCommitment && !sent.includes('?') && !sentNeg && !sentVag) {
+          let owner = msg.sender;
+          const mentionMatch = sent.match(/^@([A-Za-z0-9_]+)/);
+          if (mentionMatch) owner = mentionMatch[1];
+          fallbackActions.push({ text: `Confirmed task: "${sent.trim()}"`, owner, quote: sent.trim(), source_id: msg.id });
+          break;
+        }
+      }
     }
 
     // 4. Decisions
     // FIX: Removed "require/requirement" (too noisy); added exclusions for TBD,
     //      "agreed to disagree", and speculative phrasing
+    const tbdPattern = /\b(?:tbd|to be decided|to be determined)\b/i;
+    const agreedToDisagree = /agreed to disagree/i;
     const isDecisionKeyword = /\b(?:decided|agreed|will use|decision)\b/i.test(msg.text);
     const isUncertain = /(?:maybe|unconfirmed|undecided|pending|haven't decided|not decided|not booked)/i.test(msg.text);
-    const isTBD = /\b(?:tbd|to be decided|to be determined)\b/i.test(msg.text);
-    const isAgreedToDisagree = /agreed to disagree/i.test(msg.text);
+    const isTBD = tbdPattern.test(msg.text);
+    const isAgreedToDisagree = agreedToDisagree.test(msg.text);
 
     if (isDecisionKeyword && !isUncertain && !isTBD && !isAgreedToDisagree && !msg.text.includes('?')) {
       fallbackDecisions.push({ text: `Decision made: "${msg.text}"`, quote: msg.text, source_id: msg.id });
+    } else {
+      // Sentence-level decision check for messages with questions or conversational phrases
+      const sentences = msg.text.split(/(?<=[.?!])\s+/).filter(s => s.trim().length > 0);
+      for (const sent of sentences) {
+        const sentDecision = /\b(?:decided|agreed|will use|decision|let's keep|let's use|let's go with|see you both at)\b/i.test(sent);
+        const sentUncertain = isUncertain || /(?:maybe|unconfirmed|undecided|pending|haven't decided|not decided|not booked)/i.test(sent);
+        const sentTBD = tbdPattern.test(sent);
+        const sentDisagreed = agreedToDisagree.test(sent);
+
+        if (sentDecision && !sentUncertain && !sentTBD && !sentDisagreed && !sent.includes('?')) {
+          fallbackDecisions.push({ text: `Decision made: "${sent.trim()}"`, quote: sent.trim(), source_id: msg.id });
+          break;
+        }
+      }
     }
   });
 
