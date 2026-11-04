@@ -1,5 +1,258 @@
-# PALS_ Hackathon Workspace
+# CatchUp ⚡
+### 100% In-Browser AI Conversation Analyst & Executive Triage Console
 
-This repository is for our hackathon project.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-113%2F113_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
+[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_Instruct-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
+[![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
 
-Currently, the project scope is awaiting the official problem statement release. Once the problem statement is announced, we will begin development.
+> **CatchUp** turns chaotic, 200+ message chat dumps (Slack, WhatsApp, Teams, Discord) into an organized, prioritized executive dashboard in seconds — running **100% privately in your browser** using on-device WebGPU inference. Zero server APIs. Zero data leaks.
+
+---
+
+## 📑 Table of Contents
+
+- [The Core Problem & Walkaway](#-the-core-problem--walkaway)
+- [Key Features](#-key-features)
+- [System Architecture](#-system-architecture)
+- [Why Hybrid AI? (Neural + Heuristic)](#-why-hybrid-ai-neural--heuristic)
+- [Workspace & UI Structure](#-workspace--ui-structure)
+- [Project Directory](#-project-directory)
+- [Verification & Test Suite](#-verification--test-suite)
+- [Getting Started & Local Usage](#-getting-started--local-usage)
+- [Security & Privacy Blueprint](#-security--privacy-blueprint)
+- [Team & Credits](#-team--credits)
+
+---
+
+## 🎯 The Core Problem & Walkaway
+
+### The Problem
+In modern remote work and hackathons, team members return from meetings, lunches, or offline periods to find **walls of unread chat messages**. Critical decisions, assigned action items, and urgent blocker questions are buried across multiple conversational threads. 
+
+Traditional solutions require sending confidential company transcripts to third-party cloud LLM APIs (OpenAI, Anthropic), creating **severe data privacy, compliance, and IP leakage liabilities**.
+
+### The Walkaway (Value Proposition)
+CatchUp delivers a complete **Executive Triage Console** with **zero data transmission**:
+1. **Total Privacy Guarantee**: The conversation transcript **never leaves the user's browser**. Model weights download once via WebGPU/CDN and run on the local GPU.
+2. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
+3. **Zero Hallucination with Source Grounding**: Every extracted deliverable, task, decision, and question is strictly validated and linked to its exact source message and sender.
+
+---
+
+## ✨ Key Features
+
+| Category | Capability | Description |
+| :--- | :--- | :--- |
+| ⚡ **Needs Attention** | **Personalized Triage** | Automatically extracts blockers, urgent requests, and @mentions directed to you (or your customized `targetUser` filter). Includes self-mention guards. |
+| 📝 **Executive Summary** | **Synthesized Briefing** | Generates concise, high-signal summary bullet points highlighting project status, key milestones, and critical risks. |
+| 📋 **Action Items** | **Interactive Checklist** | Extracts tasks with explicit or inferred owners (`@Alice`), source quotes, and clickable checkboxes with strike-through completion states. |
+| 🎯 **Decisions Made** | **Consensus Register** | Distinguishes finalized agreements from tentative proposals, filtering out speculative hedges and "TBD" items. |
+| ❓ **Open Questions** | **Temporal Resolution** | Tracks unresolved questions and automatically resolves questions that were answered within 2 subsequent messages using semantic and token overlap. |
+| 🎛️ **View Switcher** | **No-Scroll Dashboard** | Toggle between **Overview** (2-column balanced executive dashboard) and focused single-category views (`Needs You`, `Tasks`, `Decisions`, `Questions`). |
+| 📤 **Export & Report** | **One-Click Sharing** | Formats findings into an executive Markdown report with one-click clipboard copying (with fallback) and direct `.md` file download. |
+
+---
+
+## 🏗️ System Architecture
+
+CatchUp operates on a **Dual-Stream Hybrid Architecture**, merging probabilistic neural generation with deterministic linguistic heuristics to achieve both contextual intelligence and deterministic reliability.
+
+```mermaid
+flowchart TD
+    subgraph Client ["Client Browser (100% In-Memory Sandbox)"]
+        Raw["Raw Conversation Transcript\n(Paste or .md/.txt File Drop)"]
+        Parser["engine.js :: parseConversation()\n• Regex Line Matcher\n• Zero-padded msg_XX generation\n• Timestamp & Sender Normalization"]
+        
+        Raw --> Parser
+        
+        subgraph HybridEngine ["Dual-Stream Hybrid Analysis"]
+            direction TB
+            subgraph Stream1 ["Stream A: Local Neural Inference"]
+                WebLLM["WebLLM / WebGPU\n(Llama-3.2-1B-Instruct-q4f16_1)\n• System Prompting with Strict Schema\n• Low-temperature (0.1) inference"]
+                JsonSanitizer["JSON Parsing & Sanitization\n• CRLF & Code-Fence Stripping\n• Placeholder Rejector"]
+                QuoteValidator["Quote & Evidence Validation\n• Exact Substring Verification\n• Source ID Linking\n• Hallucination Pruning"]
+                WebLLM --> JsonSanitizer --> QuoteValidator
+            end
+
+            subgraph Stream2 ["Stream B: Deterministic Heuristics"]
+                Heuristics["heuristics.js :: extractDeterministicFindings()\n• Target User Mention Matching\n• Negation & Vague Hedge Suppression\n• Question Resolution State Engine\n• Decision Keyword & Uncertainty Guards"]
+            end
+            
+            Parser -->|Structured Messages| Stream1
+            Parser -->|Structured Messages| Stream2
+        end
+        
+        subgraph Fusion ["Fusion & Deduplication"]
+            Dedupe["heuristics.js :: dedupe()\n• Pass 1: Source ID + Quote Signature Keying\n• Pass 2: Owner Divergence Preservation\n• Neural & Deterministic Synthesis"]
+            QuoteValidator --> Dedupe
+            Heuristics --> Dedupe
+        end
+        
+        subgraph UI ["Executive View Layer (Safe DOM)"]
+            AppController["app.js\n• View Switcher State Engine\n• textContent / createElement Only\n• Metric Summary Counts & Badges"]
+            Dashboard["index.html + style.css\n• 2-Column Balanced Executive Layout\n• Focus Tabs (Overview, Tasks, Decisions)\n• Internal Scrollable Finding Rails"]
+            Dedupe --> AppController --> Dashboard
+        end
+    end
+```
+
+---
+
+## 🔬 Why Hybrid AI? (Neural + Heuristic)
+
+Most conversational AI assistants rely purely on LLM generation, leading to three common failures:
+1. **Quote Hallucinations**: Small models often fabricate or paraphrase quotes that were never actually spoken in the chat.
+2. **Missed Direct Assignments**: Complex edge cases (e.g. `"@Bob, can you finish the report?"`) can get lost in prompt tokenization.
+3. **Fragility on Low-Resource Devices**: If a mobile device or weak GPU encounters memory pressure, a pure-LLM app fails completely.
+
+### The CatchUp Difference:
+CatchUp pairs **Llama 3.2 1B (via WebGPU)** with **Stateless Deterministic Heuristics**:
+- **Strict Evidence Validation**: Every neural finding is cross-checked against the raw message text. If the quote cannot be verified character-for-character, it is discarded.
+- **Two-Pass Deduplication (`dedupe()`)**: Synthesizes LLM discoveries with deterministic pattern-matching. If both streams identify the same task, they collapse into a single verified item; if owners diverge, both perspectives are preserved.
+- **Guaranteed Fallback**: Even if WebGPU initialization is slow or unsupported, the deterministic heuristics instantly surface urgent mentions, confirmed tasks, decisions, and open blockers.
+
+---
+
+## 🖥️ Workspace & UI Structure
+
+CatchUp eliminates the vertical wall of text through an **Executive Triage Layout**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CatchUp — Conversation Analysis Dashboard                  [Local AI: Ready]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│  METRICS BAR:                                                               │
+│  [⚡ Needs You: 1]    [📋 Tasks: 3]    [🎯 Decisions: 1]   [❓ Questions: 2] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  VIEW TABS:  [✦ Overview]  [⚡ Needs You]  [📋 Tasks]  [🎯 Decisions] [❓ Questions]│
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│  PRIMARY COLUMN (60% Desktop)        │  SECONDARY COLUMN (40% Desktop)      │
+│  ──────────────────────────────────  │  ──────────────────────────────────  │
+│  • Executive Summary                 │  • Needs Your Attention              │
+│    Concise synthesized takeaways     │    Crimson-accented high priority    │
+│    and project status.               │    alert cards with direct actions.  │
+│                                      │                                      │
+│  • Action Items & Deliverables       │  • Decisions Made                    │
+│    Interactive checklist with        │    Emerald-accented confirmed        │
+│    checkboxes, @owner pills, and     │    consensus items.                  │
+│    citation references.              │                                      │
+│    (Internally scrollable rail)      │  • Open Questions & Blockers         │
+│                                      │    Amber-accented unresolved items.  │
+└──────────────────────────────────────┴──────────────────────────────────────┘
+```
+
+---
+
+## 📁 Project Directory
+
+```
+d:\PALS_\
+├── index.html                   # Semantic markup, executive dashboard layout, accessible DOM
+├── style.css                    # Design system tokens, multi-column bento grid, dark/light accents
+├── app.js                       # UI controller, state management, safe DOM rendering, export handlers
+├── engine.js                    # WebLLM wrapper, Llama-3.2 prompt lifecycle, quote evidence validator
+├── heuristics.js                # Deterministic pattern extractor, negation filter, two-pass dedupe
+├── vercel.json                  # Production headers (X-Frame-Options, X-Content-Type-Options, nosniff)
+├── AGENTS.md                    # Project-wide architecture principles and rules
+├── README.md                    # Comprehensive documentation and architecture specification
+│
+└── test_regression/             # Automated test harnesses (113 passing tests)
+    ├── runner.js                # Core regression runner (23 unit & contract tests)
+    ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
+    └── adversarial.js           # Adversarial suite (28 real-world edge-case tests)
+```
+
+---
+
+## 🧪 Verification & Test Suite
+
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **113 automated tests** with **0 failures**:
+
+```bash
+# Run all regression and stress suites
+node test_regression/runner.js
+node test_regression/deep_stress.js
+node test_regression/adversarial.js
+```
+
+### Breakdown of Test Suites:
+
+1. **`runner.js` (23 Contract Tests)**:
+   - Explicit assignee vs. sender recognition (`@Bob I will do it` → owner: Bob).
+   - Non-assignment mention filtering.
+   - Dynamic `targetUser` matching and null-fallback routing.
+   - Negation filtering (`"I can't make it"` is never an action).
+   - Vague hedge filtering (`"I will think about it"` / `"We will see"` excluded).
+   - URL query parameter isolation (`?` in URLs does not trigger open questions).
+   - Malformed message payload and null-sender resilience.
+
+2. **`deep_stress.js` (62 Stress Tests)**:
+   - Category 1: `parseConversation` formats (standard, WhatsApp, timestamps, multiline).
+   - Category 2: Needs You attention & self-mention exclusion.
+   - Category 3: Open question detection and auto-resolution keyword engine.
+   - Category 4: Action items & team imperatives (`@Team`, `Everyone must`).
+   - Category 5: Decision consensus vs. tentative proposals (`maybe`, `undecided`).
+   - Category 6: Deduplication logic across mixed LLM and heuristic outputs.
+   - Category 7: High-throughput benchmark (100 messages parsed and extracted in <100ms).
+
+3. **`adversarial.js` (28 Adversarial Tests)**:
+   - Short-token time answer resolution (e.g. `"Can we meet at 1 PM?"` answered by `"1 PM works for me"`).
+   - Pure standalone acknowledgments (`"confirmed"`, `"works for me"`).
+   - TBD and "agreed to disagree" suppression.
+   - Large conversation scaling (>200 messages sequential ID ordering).
+
+---
+
+## 🚀 Getting Started & Local Usage
+
+### Prerequisites
+- Any modern web browser supporting **WebGPU** (Chrome 113+, Edge 113+, Firefox Nightly, Safari 18+).
+- Optional: [Node.js](https://nodejs.org/) (v18+) to run the regression test suite.
+
+### Running Locally
+Because CatchUp is built with pure ES Modules, it can be served using any local static file server:
+
+```bash
+# Clone the repository
+git clone https://github.com/guptavernit2-afk/PALS_.git
+cd PALS_
+
+# Serve using Python
+python -m http.server 8000
+
+# Or serve using Node.js npx
+npx serve .
+```
+
+Open your browser at `http://localhost:8000`.
+
+### Using the Application
+1. **Target User (Optional)**: Enter your name (e.g. `Alice` or `@Alice`) in the target user input to personalize high-priority alerts under **Needs You**.
+2. **Load Conversation**: Click **"Load sample"** to test with our built-in hackathon planning transcript, paste your own text, or drop a `.md` / `.txt` file into the dropzone.
+3. **Analyze**: Click **"Analyze Conversation"**. On the initial run, the WebLLM engine caches model weights (~1.5GB) directly into your browser's CacheStorage.
+4. **Triage & Export**: Use the view tabs to review tasks and decisions, toggle completed checkboxes, and click **"Copy Markdown"** or **"Download .md"** to export your meeting minutes.
+
+---
+
+## 🔒 Security & Privacy Blueprint
+
+- **Zero Remote Telemetry**: CatchUp transmits 0 bytes of conversation data over the network. All inference occurs in WebGPU shaders on your machine.
+- **XSS Immunity (Safe DOM Only)**: Model and user strings are strictly inserted using `node.textContent` and `document.createElement`. No `innerHTML` or `eval` execution of external or AI-generated strings.
+- **Hardened Deployment**: Configured via `vercel.json` with strict HTTP security headers:
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: DENY`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+
+---
+
+## 👥 Team & Credits
+
+Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
+
+* **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator.
+* **Frontend & UI/UX**: Executive triage dashboard, segmented view switcher, responsive bento grid.
+* **Testing & Hardening**: 113-test regression harness, adversarial stress testing.
+
+*CatchUp — Catch up on what matters, 100% on your device.*
