@@ -1537,3 +1537,18 @@ button { cursor: pointer; font-family: var(--font-sans); }
   .saved-catchup-actions button { flex: 1 1 auto; }
   .dialog-actions { flex-wrap: wrap; }
 }
+
+/* Sidebar collapse: give the workspace its width back, keep reopening obvious. */
+.sidebar-brand { gap: var(--space-2); padding-right: var(--space-3); }
+.sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink-secondary); cursor: pointer; }
+.sidebar-toggle:hover { background: var(--color-accent-subtle); color: var(--color-accent-text); }
+.sidebar-toggle svg { width: 20px; height: 20px; }
+#sidebar-collapse-btn { margin-left: auto; }
+.sidebar-reopen { position: fixed; top: 16px; left: 16px; z-index: 80; box-shadow: var(--shadow-sm); }
+@media (min-width: 769px) {
+  .sidebar { transition: transform .2s var(--ease-out); }
+  .main-content { transition: margin-left .2s var(--ease-out); }
+  .sidebar-collapsed .sidebar { transform: translateX(-100%); }
+  .sidebar-collapsed .main-content { margin-left: 0; padding-top: 76px; }
+}
+@media (pointer: coarse) { .sidebar-toggle { width: 44px; height: 44px; } }

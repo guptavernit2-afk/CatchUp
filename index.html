@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchUp — Catch up on what matters</title>
   <meta name="description" content="CatchUp turns conversations into tasks, decisions, and questions with on-device processing or your own cloud API provider.">
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap" rel="stylesheet">
@@ -18,6 +18,9 @@
       <div class="sidebar-brand">
         <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span class="brand-name">CatchUp</span>
+        <button class="sidebar-toggle" id="sidebar-collapse-btn" type="button" aria-label="Collapse sidebar" aria-controls="sidebar" aria-expanded="true" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m8-12-4 4 4 4"/></svg>
+        </button>
       </div>
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" id="nav-analyze">
@@ -49,10 +52,13 @@
         </div>
       </div>
     </aside>
+    <button class="sidebar-toggle sidebar-reopen hidden" id="sidebar-expand-btn" type="button" aria-label="Expand sidebar" aria-controls="sidebar" aria-expanded="false" title="Expand sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m4-12 4 4-4 4"/></svg>
+    </button>
 
     <!-- ═══ Mobile Top Bar ═══ -->
     <header class="mobile-header">
-      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">
+      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span class="mobile-brand">CatchUp</span>
@@ -485,6 +491,6 @@
   <dialog id="delete-catchup-dialog" class="catchup-dialog" aria-labelledby="delete-dialog-title">
     <form id="delete-catchup-form"><h2 id="delete-dialog-title">Delete permanently?</h2><p id="delete-dialog-note"></p><p id="delete-dialog-error" class="input-hint" role="alert"></p><div class="dialog-actions"><button class="secondary-btn" id="delete-dialog-cancel" type="button">Cancel</button><button class="primary-btn" id="delete-dialog-submit" type="submit">Delete permanently</button></div></form>
   </dialog>
-  <script type="module" src="app.js?v=20"></script>
+  <script type="module" src="app.js?v=21"></script>
 </body>
 </html>

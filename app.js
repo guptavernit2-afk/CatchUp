@@ -6,6 +6,7 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
+import { createSidebar } from './sidebar.js';
 import { createLibraryUI } from './library-ui.js';
 import { generateMarkdown } from './report.js';
 import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=15';
@@ -108,6 +109,11 @@ const dom = {
   questionsList:   $('questions-list'),
 };
 
+const sidebarController = createSidebar({
+  sidebar: dom.sidebar, collapseButton: $('sidebar-collapse-btn'), expandButton: $('sidebar-expand-btn'),
+  mobileButton: dom.mobileMenuBtn, overlay: dom.sidebarOverlay
+});
+
 // ── State ──
 let isAnalyzing = false;
 let activeAnalysis = null;
@@ -152,17 +158,12 @@ function navigateTo(page) {
 }
 
 function closeSidebar() {
-  dom.sidebar.classList.remove('open');
-  dom.sidebarOverlay.classList.add('hidden');
+  sidebarController.close();
 }
 
 dom.navAnalyze.addEventListener('click', e => { e.preventDefault(); navigateTo('analyze'); });
 dom.navAbout.addEventListener('click', e => { e.preventDefault(); navigateTo('about'); });
-dom.mobileMenuBtn.addEventListener('click', () => {
-  dom.sidebar.classList.add('open');
-  dom.sidebarOverlay.classList.remove('hidden');
-});
-dom.sidebarOverlay.addEventListener('click', closeSidebar);
+
 
 // ══════════════
 // Input Handling
