@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test_regression/reliability.test.mjs test_regression/evaluation.test.mjs test_regression/lifecycle.test.mjs test_regression/saved-catchups.test.mjs && node test_regression/runner.js && node test_regression/deep_stress.js && node test_regression/adversarial.js"
+    "test": "node --test test_regression/reliability.test.mjs test_regression/evaluation.test.mjs test_regression/lifecycle.test.mjs test_regression/saved-catchups.test.mjs test_regression/quality.test.mjs && node test_regression/runner.js && node test_regression/deep_stress.js && node test_regression/adversarial.js",
+    "test:quality": "node --test test_regression/quality.test.mjs",
+    "audit:quality": "node test_regression/quality-audit.mjs",
+    "benchmark:quality": "node test_regression/benchmark-quality.mjs"
   },
   "engines": {
     "node": ">=18"

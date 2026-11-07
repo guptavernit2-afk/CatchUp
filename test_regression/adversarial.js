@@ -60,15 +60,12 @@ runTest('fp-questions', 'Clarification question that is immediately answered sta
   assert.strictEqual(r.fallbackQuestions.length, 0, 'Immediately answered question should not be open');
 });
 
-runTest('fp-questions', 'Agreement with "yes" but NO shared keyword still resolves?', () => {
-  // "Can you help?" → "Yes!" — no shared keyword, so algorithm should NOT resolve it
+runTest('fp-questions', 'An immediate yes answers a direct help request', () => {
   const r = extractDeterministicFindings([
     createMsg('01', 'Alice', 'Can you help?'),
     createMsg('02', 'Bob', 'Yes!')
   ]);
-  // Current algorithm needs shared keyword — this should remain OPEN
-  // That's actually CORRECT behavior (too vague to definitively resolve)
-  assert.ok(typeof r.fallbackQuestions.length === 'number', 'Should not crash');
+  assert.strictEqual(r.fallbackQuestions.length, 0, 'An immediate affirmative answers the help request');
 });
 
 runTest('fp-questions', 'Meeting reschedule confirmation removes the question', () => {
@@ -87,14 +84,12 @@ runTest('fp-questions', '"?" inside URL should NOT trigger question detection', 
   assert.strictEqual(r.fallbackQuestions.length, 0, 'URL query strings must not trigger question detection');
 });
 
-runTest('fp-questions', 'Sentence ending "...right?" still treated as open (no resolver match)', () => {
+runTest('fp-questions', 'A direct agreement answers a scheduling tag question', () => {
   const r = extractDeterministicFindings([
     createMsg('01', 'Alice', 'We ship on Friday, right?'),
     createMsg('02', 'Bob', 'Sounds good to me')
   ]);
-  // "Sounds good to me" is now a pure-ack — but "Friday" IS a 3+ char word shared with "Friday" in the question
-  // This tests behaviour after the 3-char fix: "right" + "friday" could match or not — just no crash
-  assert.ok(typeof r.fallbackQuestions.length === 'number', 'Should not crash');
+  assert.strictEqual(r.fallbackQuestions.length, 0, 'Direct agreement confirms the proposed schedule');
 });
 
 runTest('fp-questions', '"works for me" standalone resolves question', () => {
@@ -123,8 +118,7 @@ runTest('fp-actions', '"I will be there" is attendance, not a task — document 
   const r = extractDeterministicFindings([
     createMsg('01', 'Bob', 'I will be there at 5 PM')
   ]);
-  // "I will" triggers — attendance is hard to separate without NLP. Document only.
-  assert.ok(typeof r.fallbackActions.length === 'number', 'Should not crash');
+  assert.strictEqual(r.fallbackActions.length, 0, 'Attendance is not a deliverable');
 });
 
 runTest('fp-actions', '"I will think about it" must NOT be an action (vague hedge)', () => {

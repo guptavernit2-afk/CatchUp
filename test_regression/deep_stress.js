@@ -204,7 +204,7 @@ runTest('needsYou', 'Message from targetUser themselves does NOT trigger self-ne
   // Bob is the sender; the current regex also matches sender
   // This is actually a known issue we want to flag if it fires
   // For now, document the actual behavior
-  assert.ok(typeof r.fallbackNeedsYou.length === 'number', 'Should not crash');
+  assert.strictEqual(r.fallbackNeedsYou.length, 0, 'A sender must not be asked to act on their own message');
 });
 
 runTest('needsYou', 'Priority field is always "high" for needsYou findings', () => {

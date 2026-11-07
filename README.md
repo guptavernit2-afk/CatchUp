@@ -2,7 +2,7 @@
 ### Conversation Analyst with Local and Optional Cloud Processing
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-254%2F254_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-1705%2F1705_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
 [![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_3.5_Flash_Lite-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
@@ -37,7 +37,7 @@ Traditional solutions require sending confidential company transcripts to third-
 ### The Walkaway (Value Proposition)
 CatchUp delivers a complete **Executive Triage Console** tailored to user privacy needs:
 1. **Total Privacy Guarantee (Local Hero)**: The conversation transcript **never leaves the user's browser**. Model weights run 100% locally via WebGPU shaders.
-2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 3.5 Flash-Lite, Groq, OpenAI) or an instant 5ms deterministic rule engine.
+2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 3.5 Flash-Lite, Groq, OpenAI) or a fast on-device deterministic rule engine.
 3. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
 4. **Source-grounded findings**: AI findings must include an exact quote from the specified message. Displayed finding text uses that quote; unsupported owners and free-form summaries are discarded. Source checks do not guarantee correct classification or interpretation.
 
@@ -198,7 +198,7 @@ d:\PALS_\
 ├── AGENTS.md                    # Project-wide architecture principles and rules
 ├── README.md                    # Comprehensive documentation and architecture specification
 │
-└── test_regression/             # Automated test harnesses (254 passing tests)
+└── test_regression/             # Automated test harnesses (1705 passing tests)
     ├── reliability.test.mjs     # Native production-module tests (76 tests)
     ├── runner.js                # Core regression runner (26 unit & contract tests)
     ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
@@ -217,13 +217,15 @@ Automated saved-report checks cover persistence across store instances, edits, r
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **254 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **1705 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
 npm ci
 npm test
 ```
+
+The total includes 1,451 internal quality checks: 80 independently authored synthetic English scenarios expanded into 1,280 name/format checks, 160 mocked local/cloud classification-contract checks, and eleven state/scale/summary checks. Variants are not independent real-world chats, and mocked responses do not measure live LLM quality. See [the engine quality audit](test_regression/ENGINE_QUALITY.md) for before/after results, examples, and limits.
 
 ### Breakdown of Test Suites:
 
@@ -292,7 +294,7 @@ npx serve .
 Open your browser at `http://localhost:8000`.
 
 ### Using the Application
-1. **Choose Engine Profile**: Choose **🛡️ Local Private** (default WebGPU) for confidential data, **⚡ Cloud Turbo** (Gemini/Groq/OpenAI) for fast BYOK inference, or **⏱️ Instant Rules** for instant 5ms extraction.
+1. **Choose Engine Profile**: Choose **🛡️ Local Private** (default WebGPU) for confidential data, **⚡ Cloud Turbo** (Gemini/Groq/OpenAI) for fast BYOK inference, or **⏱️ Instant Rules** for fast on-device extraction.
 2. **Target User (Optional)**: Enter your name (e.g. `Alice` or `@Alice`) in the target user input to personalize high-priority alerts under **Needs You**.
 3. **Load Conversation**: Click **"Load sample"** to test with our built-in hackathon planning transcript, paste your own text, or drop a `.md` / `.txt` file into the dropzone.
 4. **Analyze**: Click **"Analyze Conversation"**.
@@ -328,6 +330,6 @@ Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
 
 * **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
 * **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 254-test regression harness, adversarial stress testing.
+* **Testing & Hardening**: 1705-test regression harness, adversarial stress testing.
 
 *CatchUp — Catch up on what matters. Local processing or your chosen cloud provider.*

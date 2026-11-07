@@ -182,78 +182,12 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
     throw new TypeError('Messages must have unique string IDs and text.');
   }
 
-  // ── Mode: Instant Heuristic Rule Engine (Zero-download, ~5ms) ───────────
+  // ── Mode: Instant Heuristic Rule Engine (Zero-download, chat-size dependent) ───────────
   if (mode === 'heuristic') {
     if (onProgress) onProgress({ text: "Extracting findings with instant rule engine…", progress: 0.8 });
     const { fallbackNeedsYou, fallbackActions, fallbackDecisions, fallbackQuestions } = extractDeterministicFindings(messages, targetUser);
 
-    const summaryPoints = [];
-    const participants = Array.from(new Set(messages.map(m => m.sender).filter(Boolean)));
-    
-    // 1. Topic & Scope Overview
-    const allText = messages.map(m => m.text).join(' ');
-    const topics = [];
-    if (/hackathon/i.test(allText)) topics.push('hackathon planning');
-    if (/tech stack|architecture|framework|api|database|backend|frontend/i.test(allText)) topics.push('tech stack selection');
-    if (/meeting|reschedule|tomorrow|schedule|calendar/i.test(allText)) topics.push('schedule coordination');
-    if (/release|deploy|launch|shipping/i.test(allText)) topics.push('release planning');
-    if (/bug|issue|incident|outage|fix/i.test(allText)) topics.push('incident response');
-
-    const topicLabel = topics.length > 0 ? topics.slice(0, 2).join(' and ') : 'Project coordination';
-    const participantsLabel = participants.length > 0 
-      ? `between ${participants.slice(0, 3).join(', ')}${participants.length > 3 ? ` and ${participants.length - 3} others` : ''}`
-      : '';
-    summaryPoints.push(`${topicLabel.charAt(0).toUpperCase() + topicLabel.slice(1)} ${participantsLabel} (${messages.length} messages).`.trim());
-
-    // 2. Confirmed Decisions
-    if (fallbackDecisions.length > 0) {
-      const decisionPhrases = fallbackDecisions.slice(0, 3).map(d => {
-        return (d.text || d.quote)
-          .replace(/^Decision made:\s*"?|"?$/g, '')
-          .replace(/[.;]+$/, '')
-          .trim();
-      });
-      summaryPoints.push(`Decisions: ${decisionPhrases.join('; ')}.`);
-    }
-
-    // 3. Action Items & Ownership
-    if (fallbackActions.length > 0) {
-      const ownerGroups = Object.create(null);
-      fallbackActions.forEach(a => {
-        const owner = a.owner || 'Unassigned';
-        if (!ownerGroups[owner]) ownerGroups[owner] = [];
-        const taskText = (a.quote || a.text)
-          .replace(/^(?:Confirmed task:\s*|Task for [^:]+:\s*)"?|"?$/g, '')
-          .replace(/^(?:Sounds good\.\s*)?([A-Za-z0-9_]+)[,:]\s*(?:can you|could you|please)\s+/i, '')
-          .replace(/^(?:That would be great,?\s*[A-Za-z0-9_]*\.?\s*)?(?:I will|I'll|I can|we will)\s+/i, '')
-          .replace(/^(?:Not yet\.\s*)?(?:I will|I'll|I can)\s+/i, '')
-          .replace(/[.;]+$/, '')
-          .trim();
-        ownerGroups[owner].push(taskText);
-      });
-      const actionSummaries = Object.entries(ownerGroups).slice(0, 4).map(([owner, tasks]) => {
-        const firstTask = tasks[0];
-        const preview = firstTask.length > 45 ? firstTask.slice(0, 42) + '…' : firstTask;
-        return `${owner} (${preview})`;
-      });
-      summaryPoints.push(`Tasks (requested and confirmed): ${actionSummaries.join(', ')}.`);
-    }
-
-    // 4. Open Blockers / Questions
-    if (fallbackQuestions.length > 0) {
-      const questionPhrases = fallbackQuestions.slice(0, 2).map(q => {
-        return (q.quote || q.text)
-          .replace(/^Open item\/question:\s*"?|"?$/g, '')
-          .replace(/^One more thing\s*[-—:]*\s*/i, '')
-          .replace(/[.;]+$/, '')
-          .trim();
-      });
-      summaryPoints.push(`Open Blockers & Questions: ${questionPhrases.join('; ')}.`);
-    }
-
-    if (summaryPoints.length === 0) {
-      summaryPoints.push("Discussion completed with no high-priority blockers or open questions.");
-    }
+    const summaryPoints = buildRuleBriefing(messages, fallbackActions, fallbackDecisions, fallbackQuestions);
 
     return {
       processing_mode: mode,
@@ -354,13 +288,40 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
 
   const validated = validateAnalysis(parsed, messages, targetUser);
   const fallback = await analyzeConversation(messages, null, targetUser, { mode: 'heuristic' });
+  const sourceOrder = new Map(messages.map((message, index) => [message.id, index]));
+  const sourceText = new Map(messages.map(message => [message.id, message.text]));
+  const merge = (ai, rules) => dedupe(ai, rules).sort((left, right) =>
+    sourceOrder.get(left.source_id) - sourceOrder.get(right.source_id)
+    || sourceText.get(left.source_id).indexOf(left.quote) - sourceText.get(right.source_id).indexOf(right.quote));
   return {
     processing_mode: mode,
     ...((localBriefingFallback || (mode === 'local' && !validated.summary_points.length)) ? { notice: 'The local model returned no usable source selections; the briefing uses Instant Rules.' } : {}),
-    needs_you: dedupe(validated.needs_you, fallback.needs_you),
+    needs_you: merge(validated.needs_you, fallback.needs_you),
     summary_points: validated.summary_points.length ? validated.summary_points : fallback.summary_points,
-    action_items: dedupe(validated.action_items, fallback.action_items),
-    decisions: dedupe(validated.decisions, fallback.decisions),
-    open_questions: dedupe(validated.open_questions, fallback.open_questions)
+    action_items: merge(validated.action_items, fallback.action_items),
+    decisions: merge(validated.decisions, fallback.decisions),
+    open_questions: merge(validated.open_questions, fallback.open_questions)
   };
+}
+
+// Summarize only extracted facts. Do not infer a project topic from words in
+// URLs, small talk, or an API-access question, and do not silently hide an
+// owner's second task. Overflow counts make this a briefing, not a full report.
+function buildRuleBriefing(messages, tasks, decisions, questions) {
+  const participants = [...new Set(messages.map(message => message.sender).filter(Boolean))];
+  const people = participants.slice(0, 4).join(', ') + (participants.length > 4 ? ` and ${participants.length - 4} others` : '');
+  const points = [`${messages.length} messages${people ? ` between ${people}` : ''}.`];
+  function add(label, items, limit, format) {
+    if (!items.length) return;
+    const text = items.slice(0, limit).map(format).join('; ');
+    points.push(`${label}: ${text}${items.length > limit ? ` (+${items.length - limit} more; see the full list)` : ''}`);
+  }
+  add(`Decisions (${decisions.length})`, decisions, 3, item => item.quote || item.text);
+  const confirmed = tasks.filter(task => task.status === 'confirmed').length;
+  const completed = tasks.filter(task => task.completed).length;
+  const taskCounts = [completed && `${completed} completed`, confirmed - completed && `${confirmed - completed} confirmed`, tasks.length - confirmed && `${tasks.length - confirmed} requested`].filter(Boolean).join(', ');
+  add(`Tasks (${taskCounts})`, tasks, 6, item => `${item.owner || 'Unassigned'} [${item.completed ? 'completed' : item.status}]: ${item.quote || item.text}`);
+  add(`Open questions & blockers (${questions.length})`, questions, 3, item => item.quote || item.text);
+  if (!tasks.length && !decisions.length && !questions.length) points.push('No explicit tasks, decisions, or open questions detected.');
+  return points;
 }
