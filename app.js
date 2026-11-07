@@ -7,7 +7,7 @@
  */
 
 import { generateMarkdown } from './report.js';
-import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=14';
+import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=15';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
@@ -75,11 +75,15 @@ const dom = {
   progressTitle:   $('progress-title'),
   progressDetail:  $('progress-detail'),
   progressFill:    $('progress-fill'),
+  cancelBtn:       $('cancel-analysis-btn'),
+  progressRulesBtn:$('progress-rules-btn'),
 
   // Error
   errorPanel:      $('error-panel'),
   errorDetail:     $('error-detail'),
   retryBtn:        $('retry-btn'),
+  errorBackBtn:    $('error-back-btn'),
+  errorRulesBtn:   $('error-rules-btn'),
 
   // Results
   resultsWorkspace:$('results-workspace'),
@@ -105,6 +109,7 @@ const dom = {
 
 // ── State ──
 let isAnalyzing = false;
+let activeAnalysis = null;
 let currentMessages = [];
 let lastAnalysisResult = null;
 
@@ -240,8 +245,16 @@ function setProgress(title, detail, pct) {
   dom.progressTitle.textContent = title;
   dom.progressDetail.textContent = detail;
   if (pct !== undefined) {
-    dom.progressFill.style.width = `${Math.round(pct * 100)}%`;
+    const progress = Math.round(Math.max(0, Math.min(1, pct)) * 100);
+    dom.progressFill.style.width = `${progress}%`;
+    dom.progressFill.style.opacity = '1';
+    dom.progressFill.parentElement.setAttribute('aria-valuenow', String(progress));
+  } else {
+    dom.progressFill.style.width = '100%';
+    dom.progressFill.style.opacity = '0.35';
+    dom.progressFill.parentElement.removeAttribute('aria-valuenow');
   }
+  dom.progressFill.parentElement.setAttribute('aria-valuetext', detail);
 }
 
 function showError(message) {
@@ -341,7 +354,7 @@ function setEngineMode(mode) {
       const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'API';
       dom.engineStatusBadge.textContent = `Cloud API (${provider.toUpperCase()})`;
     } else {
-      dom.engineStatusBadge.textContent = 'Instant Rule Engine (5ms)';
+      dom.engineStatusBadge.textContent = 'Instant Rule Engine (on-device)';
     }
   }
 
@@ -363,7 +376,7 @@ function setEngineMode(mode) {
     const provider = dom.cloudProviderSelect ? dom.cloudProviderSelect.value : 'API';
     setModelStatus('ready', `Cloud API (${provider.toUpperCase()})`);
   } else {
-    setModelStatus('ready', 'Instant Rule Engine ready (0MB)');
+    setModelStatus('ready', 'Instant Rule Engine ready');
   }
 }
 
@@ -403,14 +416,19 @@ async function runAnalysis() {
   }
 
   isAnalyzing = true;
+  const run = new AbortController();
+  activeAnalysis = run;
+  const mode = currentEngineMode;
   dom.analyzeBtn.disabled = true;
   dom.inputHint.textContent = '';
 
   showView('progress');
 
   if (currentEngineMode === 'local') {
-    setProgress('Preparing WebGPU model…', 'Downloading/verifying weights on your GPU (first time takes ~30s)…', 0);
-    setModelStatus('loading', 'Loading WebGPU model…');
+    setProgress(isEngineReady() ? 'Analyzing on your GPU…' : 'Loading local model…', isEngineReady()
+      ? 'The model is ready. Selecting source messages for your briefing…'
+      : 'First use downloads model files and can take several minutes. You can cancel or use Instant Rules.', isEngineReady() ? undefined : 0);
+    setModelStatus('loading', isEngineReady() ? 'Analyzing with local AI…' : 'Loading WebGPU model…');
   } else if (currentEngineMode === 'cloud') {
     setProgress('Cloud Turbo…', `Contacting ${provider.toUpperCase()} API for instant analysis…`, 0.4);
     setModelStatus('loading', `Calling ${provider.toUpperCase()}…`);
@@ -423,15 +441,19 @@ async function runAnalysis() {
 
   try {
     const options = {
-      mode: currentEngineMode,
+      mode,
+      signal: run.signal,
       apiProvider: provider,
       apiKey: apiKey,
       customEndpoint: provider === 'custom' && dom.cloudCustomEndpoint ? dom.cloudCustomEndpoint.value.trim() : ''
     };
 
     const result = await analyzeConversation(currentMessages, (info) => {
-      setProgress('Processing…', info.text, info.progress);
+      if (activeAnalysis !== run) return;
+      setProgress(info.stage === 'loading' ? 'Loading local model…' : info.stage === 'inference' ? 'Analyzing on your GPU…' : 'Processing…', info.text, info.progress);
+      if (info.stage === 'inference') setModelStatus('loading', 'Analyzing with local AI…');
     }, targetUser, options);
+    if (activeAnalysis !== run || run.signal.aborted) return;
 
     if (currentEngineMode === 'local') {
       setModelStatus('ready', 'WebGPU Ready');
@@ -445,14 +467,39 @@ async function runAnalysis() {
     showView('results');
 
   } catch (err) {
+    if (activeAnalysis !== run || err?.name === 'AbortError') return;
     console.error('Analysis failed:', err);
     setModelStatus('error', 'Analysis error');
-    showError(err.message || 'An unknown error occurred during analysis.');
+    showError(err?.message || 'Analysis could not finish. Retry, return to input, or use Instant Rules.');
   } finally {
-    dom.analyzeBtn.disabled = false;
-    isAnalyzing = false;
+    if (activeAnalysis === run) {
+      activeAnalysis = null;
+      dom.analyzeBtn.disabled = false;
+      isAnalyzing = false;
+    }
   }
 }
+
+function returnToInput() {
+  activeAnalysis?.abort();
+  activeAnalysis = null;
+  isAnalyzing = false;
+  dom.analyzeBtn.disabled = false;
+  showView('input');
+  setEngineMode(currentEngineMode);
+  dom.textarea.focus();
+}
+
+function useInstantRules() {
+  returnToInput();
+  setEngineMode('heuristic');
+  runAnalysis();
+}
+
+dom.cancelBtn.addEventListener('click', returnToInput);
+dom.progressRulesBtn.addEventListener('click', useInstantRules);
+dom.errorBackBtn.addEventListener('click', returnToInput);
+dom.errorRulesBtn.addEventListener('click', useInstantRules);
 
 dom.analyzeBtn.addEventListener('click', runAnalysis);
 dom.retryBtn.addEventListener('click', () => {
@@ -472,7 +519,7 @@ dom.newAnalysisBtn.addEventListener('click', () => {
 function cleanFindingText(str) {
   if (!str || typeof str !== 'string') return '';
   return str
-    .replace(/^(?:Confirmed task|Attention requested|Decision made|Open item\/question|Question raised|Status update):\s*"?/i, '')
+    .replace(/^(?:Confirmed task|Requested task|Attention requested|Decision made|Open item\/question|Question raised|Status update):\s*"?/i, '')
     .replace(/"\s*$/, '')
     .trim();
 }
@@ -512,6 +559,7 @@ function renderResults(data) {
   if (subtitle) subtitle.textContent = data.processing_mode === 'cloud'
     ? 'Processed by your selected cloud API provider'
     : data.processing_mode === 'heuristic' ? 'Processed on-device with Instant Rules' : 'Processed on-device with local AI';
+  if (subtitle && data.notice) subtitle.textContent += `. ${data.notice}`;
 
   const countNY = (data.needs_you || []).length;
   const countAct = (data.action_items || []).length;
@@ -626,6 +674,12 @@ function renderCardList(container, items, section, showPriority = false, showOwn
     // Meta row (Quote + Reference)
     const meta = document.createElement('div');
     meta.className = 'finding-meta';
+    if (isActionItem) {
+      const status = document.createElement('span');
+      status.className = 'finding-ref';
+      status.textContent = item.status === 'requested' ? 'Requested · awaiting acceptance' : 'Confirmed';
+      meta.appendChild(status);
+    }
 
     // Show quote only if it differs from the primary text
     const cleaned = cleanFindingText(item.text);
@@ -650,6 +704,12 @@ function renderCardList(container, items, section, showPriority = false, showOwn
     }
 
     textWrapper.appendChild(meta);
+    if (item.confirmation) {
+      const confirmation = document.createElement('p');
+      confirmation.className = 'finding-quote';
+      confirmation.textContent = `Confirmed by “${item.confirmation.quote}” · ${item.confirmation.source_id}`;
+      textWrapper.appendChild(confirmation);
+    }
     container.appendChild(card);
   });
 }

@@ -138,7 +138,7 @@
                     <div class="option-pill-top">
                       <span class="option-emoji">⏱️</span>
                       <span class="option-label">Instant Rules</span>
-                      <span class="option-tag tag-fast">5ms</span>
+                      <span class="option-tag tag-fast">Fast</span>
                     </div>
                     <span class="option-sub">Deterministic NLP · 0MB download · Any device</span>
                   </div>
@@ -236,8 +236,12 @@
               </div>
               <h3 id="progress-title">Preparing model…</h3>
               <p class="progress-detail" id="progress-detail">This may take a moment on the first run as weights are cached.</p>
-              <div class="progress-track">
+              <div class="progress-track" role="progressbar" aria-label="Analysis progress" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <div class="recovery-actions">
+                <button class="secondary-btn" id="cancel-analysis-btn" type="button">Cancel and return</button>
+                <button class="secondary-btn" id="progress-rules-btn" type="button">Use Instant Rules</button>
               </div>
             </div>
           </section>
@@ -249,7 +253,11 @@
             </div>
             <h3 class="error-title">Analysis Interrupted</h3>
             <p class="error-detail" id="error-detail">An unknown error occurred.</p>
-            <button class="secondary-btn" id="retry-btn" type="button">Try again</button>
+            <div class="recovery-actions">
+              <button class="secondary-btn" id="retry-btn" type="button">Try again</button>
+              <button class="secondary-btn" id="error-back-btn" type="button">Back to input</button>
+              <button class="secondary-btn" id="error-rules-btn" type="button">Use Instant Rules</button>
+            </div>
           </section>
 
           <!-- Results workspace -->
@@ -439,6 +447,6 @@
   </div>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-  <script type="module" src="app.js?v=14"></script>
+  <script type="module" src="app.js?v=15"></script>
 </body>
 </html>

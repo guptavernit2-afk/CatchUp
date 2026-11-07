@@ -117,7 +117,9 @@ test('cloud timeout aborts the request', async t => {
 const finding = { text: 'Ship report', quote: 'I will ship the report.', source_id: 'msg_01', owner: 'Alice' };
 test('exact evidence replaces model paraphrases and keeps the real source', () => {
   const result = validateAnalysis({ action_items: [finding] }, messages);
-  assert.deepEqual(result.action_items, [{ ...finding, text: finding.quote }]);
+  assert.equal(result.action_items[0].quote, finding.quote);
+  assert.equal(result.action_items[0].status, 'confirmed');
+  assert.equal(result.action_items[0].owner, 'Alice');
 });
 for (const invalid of [
   { ...finding, source_id: 'msg_02' },
@@ -138,10 +140,10 @@ test('Unicode quotes are verified without discarding their characters', () => {
   const source = msg('José', 'Enviaré el informe mañana.');
   assert.equal(validateAnalysis({ summary_points: [{ quote: source.text, source_id: source.id }] }, [source]).summary_points[0], source.text);
 });
-test('invented and merely discussed owners are removed', () => {
+test('invented and merely discussed owners cannot override the source speaker', () => {
   for (const owner of ['Imaginary', 'Al', 'Bob']) {
     const source = msg('Alice', 'I will ship the report. Bob reviewed it.');
-    assert.equal(validateAnalysis({ action_items: [{ ...finding, owner }] }, [source]).action_items[0].owner, null);
+    assert.equal(validateAnalysis({ action_items: [{ ...finding, owner }] }, [source]).action_items[0].owner, 'Alice');
   }
 });
 test('explicit assignees in the cited message are preserved', () => {
@@ -273,7 +275,7 @@ test('smart punctuation is normalized only for matching; evidence stays unchange
 test('neural owner cannot redirect a first-person promise to its @recipient', () => {
   const text = '@Bob I’ll update the report.';
   const result = validateAnalysis({ action_items: [{ quote: text, source_id: 'msg_01', owner: 'Bob' }] }, [msg('Alice', text)]);
-  assert.equal(result.action_items[0].owner, null);
+  assert.equal(result.action_items[0].owner, 'Alice');
   assert.equal(extractDeterministicFindings([msg('Alice', text)]).fallbackActions[0].owner, 'Alice');
 });
 test('accepting one task before asking a separate question still confirms the task', () => {

@@ -268,7 +268,120 @@ export function extractDeterministicFindings(messages, targetUser = null) {
     }
   });
 
-  return { fallbackNeedsYou, fallbackActions, fallbackDecisions, fallbackQuestions };
+  return {
+    fallbackNeedsYou,
+    fallbackActions: reconcileTasks(messages, fallbackActions),
+    fallbackDecisions: contextualizeDecisions(messages, fallbackDecisions),
+    fallbackQuestions
+  };
+}
+
+function evidence(message, quote = message.text) {
+  return { source_id: message.id, quote };
+}
+
+function taskWords(text) {
+  const ignored = new Set(['can', 'could', 'would', 'will', 'you', 'please', 'the', 'that', 'this', 'with', 'for', 'and', 'sure', 'do', 'it', 'we', 'my', 'to', 'is', 'on', 'me']);
+  return new Set((normalizeForMatching(text).toLowerCase().match(/[\p{L}\p{N}_]{2,}/gu) || []).filter(word => !ignored.has(word)));
+}
+
+function sharesTask(left, right) {
+  const leftNumbers = left.match(/\b\d+\b/g) || [];
+  const rightNumbers = new Set(right.match(/\b\d+\b/g) || []);
+  if (leftNumbers.length && rightNumbers.size && !leftNumbers.some(number => rightNumbers.has(number))) return false;
+  const words = taskWords(left);
+  return [...taskWords(right)].filter(word => words.has(word)).length >= 2;
+}
+
+export function reconcileTasks(messages, extracted) {
+  let tasks = extracted.map(task => ({ ...task, status: /\b(?:i will|i'll|i can|we will|we'll)\b/i.test(normalizeForMatching(task.quote)) ? 'confirmed' : 'requested' }));
+  tasks = tasks.filter(task => {
+    if (!/\bif\b/i.test(task.quote)) return true;
+    const index = messages.findIndex(message => message?.id === task.source_id);
+    const next = messages[index + 1];
+    if (/if nobody else/i.test(task.quote) && next?.sender !== task.owner && typeof next?.text === 'string' && /\b(?:great|perfect|yes|accepted|sounds good)\b/i.test(next.text)) {
+      task.confirmation = evidence(next);
+      return true;
+    }
+    return false;
+  });
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (!message || typeof message.text !== 'string') continue;
+    const text = normalizeForMatching(message.text);
+    // Require a named addressee, not an incidental mention in the task body.
+    const request = text.match(/(?:^|[.!]\s+)@?([\p{L}\p{N}_][\p{L}\p{M}\p{N}_' -]*?)(?:[,：:]\s*|\s+)(?:please|can you|could you|would you|will you)\s+(.+)/iu);
+    if (!request) continue;
+    const owner = request[1].trim();
+    const body = request[2];
+    if (/\b(?:don't|do not|must not|never)\b/i.test(body)) continue;
+    const next = messages[index + 1];
+    const reply = next && typeof next.text === 'string' ? normalizeForMatching(next.text) : '';
+    const firstReply = reply.split(/(?<=[.!?])\s+/)[0];
+    const sameOwner = next?.sender?.trim().toLocaleLowerCase() === owner.toLocaleLowerCase();
+    const declined = sameOwner && /\b(?:no|can't|cannot|won't|will not|unable|not now)\b/i.test(firstReply);
+    const substantivePromise = /\b(?:i'll|i will|i can)\b/i.test(firstReply);
+    const genericAcceptance = /\b(?:i'll|i will|i can)\s+(?:do|handle|take)\s+(?:it|that|this)\b/i.test(firstReply);
+    let acceptanceMessage = sameOwner && !declined && !firstReply.includes('?') && /\b(?:will do|on it|sure|can do|i'll|i will|yes|accepted)\b/i.test(firstReply) && (!substantivePromise || genericAcceptance || sharesTask(body, firstReply)) ? next : null;
+    if (!acceptanceMessage && !declined) {
+      acceptanceMessage = messages.slice(index + 2).find(candidate => {
+        if (candidate?.sender?.trim().toLocaleLowerCase() !== owner.toLocaleLowerCase() || typeof candidate.text !== 'string') return false;
+        const answer = normalizeForMatching(candidate.text);
+        return !answer.includes('?') && !/\b(?:can't|cannot|won't|will not)\b/i.test(answer) && /\b(?:i'll|i will|will do|on it|accepted)\b/i.test(answer) && sharesTask(body, answer);
+      });
+    }
+    const accepted = Boolean(acceptanceMessage);
+    const volunteer = !sameOwner && next && !/\b(?:can't|cannot|won't|will not)\b/i.test(reply) && /\b(?:i'll|i will|i can)\b/i.test(reply) && sharesTask(body, reply);
+    if (declined || volunteer) {
+      tasks = tasks.filter(task => task.source_id !== message.id);
+      continue;
+    }
+    const existing = tasks.find(task => task.source_id === message.id);
+    const task = {
+      text: `${accepted ? 'Confirmed' : 'Requested'} task: "${message.text}"`,
+      owner, ...evidence(message), status: accepted ? 'confirmed' : 'requested',
+      ...(accepted ? { confirmation: evidence(acceptanceMessage, acceptanceMessage.text.split(/(?<=[.!?])\s+/)[0]) } : {})
+    };
+    if (existing) Object.assign(existing, task);
+    else tasks.push(task);
+    // A substantive acceptance is evidence for the request, not a second task.
+    if (accepted && sharesTask(body, acceptanceMessage.text)) {
+      tasks = tasks.flatMap(item => {
+        if (item === existing || item.source_id !== acceptanceMessage.id || item.owner !== owner) return [item];
+        // Keep any additional promise in the same reply after merging acceptance.
+        return item.quote.split(/(?<=[.!?])\s+/).filter(sentence => /\b(?:i will|i'll|i can)\b/i.test(normalizeForMatching(sentence)) && !/\b(?:can't|cannot|won't|will not)\b/i.test(normalizeForMatching(sentence)) && !sharesTask(body, sentence))
+          .map(sentence => ({ ...item, text: `Confirmed task: "${sentence}"`, quote: sentence }));
+      });
+    }
+  }
+  const order = new Map(messages.filter(Boolean).map((message, index) => [message.id, index]));
+  return tasks.sort((a, b) => order.get(a.source_id) - order.get(b.source_id));
+}
+
+export function contextualizeDecisions(messages, extracted) {
+  const results = new Map();
+  const byId = new Map(messages.filter(Boolean).map((message, index) => [message.id, { message, index }]));
+  for (const original of extracted) {
+    const location = byId.get(original.source_id);
+    if (!location) continue;
+    const { message, index } = location;
+    const quote = original.quote.trim();
+    const bareAgreement = /^(?:agreed|yes|sounds good|confirmed|let's do that)[.!\s]*$/i.test(normalizeForMatching(quote));
+    if (bareAgreement) {
+      const proposal = messages[index - 1];
+      if (!proposal || typeof proposal.text !== 'string' || proposal.sender === message.sender) continue;
+      const text = normalizeForMatching(proposal.text);
+      if (!/\b(?:let's (?:use|keep|go with)|we (?:should|will|could) (?:use|keep)|i (?:propose|suggest)|should we use|decided|agreed to)\b/i.test(text) || /\bor\b|\b(?:can you|could you|please|not decided|haven't decided)\b/i.test(text)) continue;
+      const existing = results.get(proposal.id);
+      results.set(proposal.id, { ...(existing || { text: `Agreed proposal: "${proposal.text}"`, ...evidence(proposal) }), confirmation: evidence(message, original.quote) });
+      continue;
+    }
+    // Preserve the choice after a vague opener such as "Let's keep it simple."
+    const fullQuote = /\blet's keep it simple\b/i.test(normalizeForMatching(quote)) ? message.text : original.quote;
+    if (/^let's keep it simple[.!\s]*(?:for now[.!\s]*)?$/i.test(normalizeForMatching(fullQuote))) continue;
+    results.set(message.id, { ...original, text: `Decision made: "${fullQuote}"`, quote: fullQuote });
+  }
+  return [...results.values()];
 }
 
 export function dedupe(arr1, arr2) {

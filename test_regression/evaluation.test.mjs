@@ -9,7 +9,7 @@ for (const scenario of scenarios) {
   test(`conversation evaluation: ${scenario.id}`, async () => {
     const messages = parseConversation(scenario.chat);
     const result = await analyzeConversation(messages, null, scenario.target, { mode: 'heuristic' });
-    assert.deepEqual(result.action_items.map(item => ({ source: item.source_id, owner: item.owner })), scenario.expected.tasks);
+    assert.deepEqual(result.action_items.map(item => ({ source: item.source_id, owner: item.owner, status: item.status })), scenario.expected.tasks);
     assert.deepEqual(result.decisions.map(item => item.source_id), scenario.expected.decisions);
     assert.deepEqual(result.open_questions.map(item => item.source_id), scenario.expected.questions);
     if (scenario.expected.attention) assert.deepEqual(result.needs_you.map(item => item.source_id), scenario.expected.attention);

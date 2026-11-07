@@ -6,6 +6,7 @@ export function generateMarkdown(data) {
   const processingLabel = data.processing_mode === 'cloud' ? 'Cloud API analysis'
     : data.processing_mode === 'heuristic' ? 'On-device rule analysis' : 'On-device AI analysis';
   lines.push(`*Generated on ${new Date().toLocaleString()} · ${processingLabel}*\n`);
+  if (data.notice) lines.push(`Processing note: ${data.notice}\n`);
 
   if (data.summary_points && data.summary_points.length > 0) {
     lines.push('## Executive Summary');
@@ -26,8 +27,9 @@ export function generateMarkdown(data) {
     lines.push('## Action Items & Deliverables');
     data.action_items.forEach(task => {
       const owner = task.owner ? ` (@${task.owner})` : '';
-      lines.push(`- [${task.completed ? 'x' : ' '}] **${task.text}**${owner}`);
+      lines.push(`- [${task.completed ? 'x' : ' '}] **${task.text}**${owner} · ${task.status === 'requested' ? 'Requested' : 'Confirmed'}`);
       if (task.quote) lines.push(`  > "${task.quote}" (${task.source_id})`);
+      if (task.confirmation) lines.push(`  > Acceptance: "${task.confirmation.quote}" (${task.confirmation.source_id})`);
     });
     lines.push('');
   }
@@ -37,6 +39,7 @@ export function generateMarkdown(data) {
     data.decisions.forEach(dec => {
       lines.push(`- ✅ ${dec.text}`);
       if (dec.quote) lines.push(`  > "${dec.quote}" (${dec.source_id})`);
+      if (dec.confirmation) lines.push(`  > Agreement: "${dec.confirmation.quote}" (${dec.confirmation.source_id})`);
     });
     lines.push('');
   }

@@ -26,25 +26,16 @@ export function validateAnalysis(parsed, messages, targetUser = null) {
       const source = msgMap.get(item.source_id);
       // Never search for a different source or normalize away meaningful characters.
       if (!source || !source.text.includes(item.quote)) return [];
-      const matchingText = normalizeForMatching(source.text);
-      // A real quote alone doesn't establish that it is a task, alert or question.
-      // Be conservative about classifications, particularly with small local models.
-      if (supportedSources[category] && !supportedSources[category].has(source.id)) return [];
-      if (category === 'action_items' && !/(?:\b(?:i will|i'll|i can|we will|we'll|please|can you|could you|would you|must)\b)/i.test(matchingText)) return [];
-      if (category === 'decisions' && /\b(?:(?:never|not)\s+(?:\w+\s+){0,2}(?:agreed|decided)|(?:haven't|hadn't|didn't|have not|had not|did not)\s+(?:agreed|decided|agree|decide))\b/i.test(matchingText)) return [];
-      if (category === 'action_items' && /\b(?:must not|should not|shouldn't|do not|don't|cannot|can't|won't|will not)\b/i.test(matchingText)) return [];
-
-      const finding = { text: item.quote, quote: item.quote, source_id: source.id };
-      if (category === 'action_items') {
-        finding.owner = null;
-        if (typeof item.owner === 'string' && item.owner.trim()) {
-          const owner = item.owner.trim().replace(/^@/, '');
-          const escaped = owner.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const assignment = new RegExp(`(?:^|[^\\p{L}\\p{N}_])(?:@${escaped}(?=$|[^\\p{L}\\p{N}_])|${escaped}[,:]\\s*(?:can you|could you|would you|please)\\b)`, 'iu');
-          const firstPerson = /\b(?:i will|i'll|i can)\b/i.test(matchingText);
-          if (owner && (source.sender?.toLocaleLowerCase() === owner.toLocaleLowerCase() || (!firstPerson && assignment.test(source.text)))) finding.owner = owner;
-        }
+      if (category === 'action_items' || category === 'decisions') {
+        const candidates = category === 'action_items' ? rules.fallbackActions : rules.fallbackDecisions;
+        const canonical = candidates.find(finding => finding.source_id === source.id && finding.quote.includes(item.quote));
+        // Status, ownership and linked context come from the shared conversation
+        // policy, never from the model's unsupported claim of confirmation.
+        return canonical ? [{ ...canonical }] : [];
       }
+      if (supportedSources[category] && !supportedSources[category].has(source.id)) return [];
+      if (category === 'summary' && /^(?:agreed|yes|sounds good|confirmed)[.!\s]*$/i.test(normalizeForMatching(item.quote))) return [];
+      const finding = { text: item.quote, quote: item.quote, source_id: source.id };
       if (category === 'needs_you') finding.priority = ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
       return [finding];
     });
