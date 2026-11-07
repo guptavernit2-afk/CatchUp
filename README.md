@@ -2,7 +2,7 @@
 ### Conversation Analyst with Local and Optional Cloud Processing
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-1705%2F1705_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-1719%2F1719_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
 [![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_3.5_Flash_Lite-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
@@ -198,7 +198,7 @@ d:\PALS_\
 ├── AGENTS.md                    # Project-wide architecture principles and rules
 ├── README.md                    # Comprehensive documentation and architecture specification
 │
-└── test_regression/             # Automated test harnesses (1705 passing tests)
+└── test_regression/             # Automated test harnesses (1719 passing tests)
     ├── reliability.test.mjs     # Native production-module tests (76 tests)
     ├── runner.js                # Core regression runner (26 unit & contract tests)
     ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
@@ -217,7 +217,7 @@ Automated saved-report checks cover persistence across store instances, edits, r
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **1705 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **1719 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
@@ -310,7 +310,7 @@ Open your browser at `http://localhost:8000`.
 - AI finding text is extractive. Quotes are case-sensitive substrings of the specified source; IDs are never silently reassigned. Unsupported summaries use the deterministic briefing instead. These checks establish provenance, not factual or semantic certainty.
 - Unknown JSON fields are ignored and malformed finding entries are dropped. Invalid JSON, empty responses, HTTP failures, and timeouts produce actionable errors without displaying raw response text.
 - Unicode, hyphenated and apostrophe-containing names and common iOS/Android WhatsApp exports are supported. Known unsupported Slack/Discord headers produce errors instead of silently discarding speakers. Timestamped system notices are skipped.
-- `npm ci` installs the development-only IndexedDB test library; `npm test` runs all suites. The browser app has no new runtime dependencies. GitHub Actions runs them on Node 18, 22, and 24. Live WebGPU and authenticated provider smoke tests are separate manual checks.
+- `npm ci` installs the development-only IndexedDB and headless-browser test tools; `npm test` runs all suites. The browser app has no new runtime dependencies. GitHub Actions runs them on Node 18, 22, and 24. Live WebGPU and authenticated provider smoke tests are separate manual checks.
 
 ## 🔒 Security & Privacy Blueprint
 
@@ -330,6 +330,8 @@ Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
 
 * **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
 * **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 1705-test regression harness, adversarial stress testing.
+* **Testing & Hardening**: 1719-test regression harness, adversarial stress testing.
 
 *CatchUp — Catch up on what matters. Local processing or your chosen cloud provider.*
+
+Live model checks and their limits are documented in [the live engine audit](test_regression/LIVE_ENGINE_AUDIT.md). Use the opt-in internal runners for authenticated Gemini or exact headless WebLLM tests; neither runs as part of `npm test`.

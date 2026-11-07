@@ -171,9 +171,9 @@ for (const payload of [null, [], 123, { action_items: [null, { quote: 123 }] }, 
   });
 }
 test('Markdown-wrapped JSON remains supported', async t => {
-  mockFetch(t, chatReply('```json\n{"summary_points":[{"quote":"Thanks.","source_id":"msg_02"}]}\n```'));
+  mockFetch(t, chatReply('```json\n{"summary_points":[{"quote":"I will ship the report.","source_id":"msg_01"}]}\n```'));
   const result = await analyzeConversation(messages, null, null, options);
-  assert.deepEqual(result.summary_points, ['Thanks.']);
+  assert.deepEqual(result.summary_points, ['I will ship the report.']);
 });
 test('invalid JSON errors never echo model output', async t => {
   mockFetch(t, chatReply('private transcript is not JSON'));

@@ -32,7 +32,7 @@ export function validateAnalysis(parsed, messages, targetUser = null) {
         // policy, never from the model's unsupported claim of confirmation.
         return canonical ? [{ ...canonical }] : [];
       }
-      if (category === 'summary' && /^(?:agreed|yes|sounds good|confirmed)[.!\s]*$/i.test(normalizeForMatching(item.quote))) return [];
+      if (category === 'summary' && /^(?:agreed|yes|sounds good(?: to me)?|confirmed|thanks|thank you|good morning|good afternoon|good evening|hi|hello|noted|ok|okay)[.!\s]*$/i.test(normalizeForMatching(source.text).trim())) return [];
       // An exact substring can still omit a negation or condition. Briefing
       // selections retain the whole message rather than a misleading fragment.
       const finding = { text: source.text, quote: source.text, source_id: source.id };

@@ -9,7 +9,7 @@
 import { createSidebar } from './sidebar.js';
 import { createLibraryUI } from './library-ui.js';
 import { generateMarkdown } from './report.js';
-import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=22';
+import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=23';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?

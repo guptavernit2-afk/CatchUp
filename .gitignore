@@ -29,3 +29,6 @@ out/
 *.pem
 secrets.json
 config.json
+
+# Isolated live-audit reports and model cache (never user browser data)
+.live-tests/
