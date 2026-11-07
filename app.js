@@ -6,7 +6,8 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
-import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=13';
+import { generateMarkdown } from './report.js';
+import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=14';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
@@ -590,6 +591,7 @@ function renderCardList(container, items, section, showPriority = false, showOwn
       checkbox.className = 'task-checkbox';
       checkbox.setAttribute('aria-label', 'Mark task complete');
       checkbox.addEventListener('change', () => {
+        item.completed = checkbox.checked;
         card.classList.toggle('completed', checkbox.checked);
       });
 
@@ -655,60 +657,6 @@ function renderCardList(container, items, section, showPriority = false, showOwn
 // ══════════════
 // Markdown Export & Sharing
 // ══════════════
-function generateMarkdown(data) {
-  if (!data) return '';
-  const lines = [];
-  lines.push('# CatchUp — Conversation Analysis Report');
-  const processingLabel = data.processing_mode === 'cloud' ? 'Cloud API analysis'
-    : data.processing_mode === 'heuristic' ? 'On-device rule analysis' : 'On-device AI analysis';
-  lines.push(`*Generated on ${new Date().toLocaleString()} · ${processingLabel}*\n`);
-
-  if (data.summary_points && data.summary_points.length > 0) {
-    lines.push('## Executive Summary');
-    data.summary_points.forEach(pt => lines.push(`- ${pt}`));
-    lines.push('');
-  }
-
-  if (data.needs_you && data.needs_you.length > 0) {
-    lines.push('## Needs Your Attention');
-    data.needs_you.forEach(item => {
-      lines.push(`- **[ALERT]** ${item.text}`);
-      if (item.quote) lines.push(`  > "${item.quote}" (${item.source_id})`);
-    });
-    lines.push('');
-  }
-
-  if (data.action_items && data.action_items.length > 0) {
-    lines.push('## Action Items & Deliverables');
-    data.action_items.forEach(task => {
-      const owner = task.owner ? ` (@${task.owner})` : '';
-      lines.push(`- [ ] **${task.text}**${owner}`);
-      if (task.quote) lines.push(`  > "${task.quote}" (${task.source_id})`);
-    });
-    lines.push('');
-  }
-
-  if (data.decisions && data.decisions.length > 0) {
-    lines.push('## Decisions Made');
-    data.decisions.forEach(dec => {
-      lines.push(`- ✅ ${dec.text}`);
-      if (dec.quote) lines.push(`  > "${dec.quote}" (${dec.source_id})`);
-    });
-    lines.push('');
-  }
-
-  if (data.open_questions && data.open_questions.length > 0) {
-    lines.push('## Open Questions & Blockers');
-    data.open_questions.forEach(q => {
-      lines.push(`- ❓ ${q.text}`);
-      if (q.quote) lines.push(`  > "${q.quote}" (${q.source_id})`);
-    });
-    lines.push('');
-  }
-
-  return lines.join('\n');
-}
-
 // Wire Copy Markdown Button with fallback
 if (dom.copyMarkdownBtn) {
   dom.copyMarkdownBtn.addEventListener('click', async () => {

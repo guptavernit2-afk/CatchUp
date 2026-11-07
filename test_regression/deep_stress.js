@@ -287,15 +287,14 @@ runTest('questions', 'Question resolved by "will do" response', () => {
   assert.ok(typeof r.fallbackQuestions.length === 'number', 'Should not crash');
 });
 
-runTest('questions', 'Question NOT resolved if response is 3+ messages away', () => {
+runTest('questions', 'Substantive ownership answer resolves question after intervening messages', () => {
   const r = extractDeterministicFindings([
     createMsg('01', 'Alice', 'Who handles documentation?'),
     createMsg('02', 'Bob', 'Let me think'),
     createMsg('03', 'Charlie', 'Good question'),
     createMsg('04', 'Dave', 'I will handle the documentation')
   ]);
-  // Response is 3 messages away, beyond lookahead window of 2
-  assert.strictEqual(r.fallbackQuestions.length, 1, 'Question should still be open (answer too far)');
+  assert.strictEqual(r.fallbackQuestions.length, 0, 'Dave explicitly takes ownership of documentation');
 });
 
 
@@ -327,9 +326,9 @@ runTest('actions', 'Commitment containing ? is NOT extracted as action', () => {
   assert.strictEqual(r.fallbackActions.length, 0, 'Questions with will should not be actions');
 });
 
-runTest('actions', '@Mention at start sets owner to mentioned person', () => {
+runTest('actions', '@Mention recipient does not replace the first-person speaker', () => {
   const r = extractDeterministicFindings([createMsg('01', 'Alice', '@Bob I will send you the files')]);
-  assert.strictEqual(r.fallbackActions[0].owner, 'Bob');
+  assert.strictEqual(r.fallbackActions[0].owner, 'Alice');
 });
 
 runTest('actions', '@Team sets owner to Team', () => {

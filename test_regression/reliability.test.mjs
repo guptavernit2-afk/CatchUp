@@ -95,6 +95,14 @@ test('HTTP errors do not display provider-echoed keys or transcripts', async t =
   mockFetch(t, { error: { message: 'fake-test-key private transcript' } }, 401);
   await assert.rejects(analyzeConversation(messages, null, null, options), error => /HTTP 401/.test(error.message) && !/fake-test-key|private transcript/.test(error.message));
 });
+test('transient provider outages are distinguished from invalid credentials', async t => {
+  mockFetch(t, {}, 503);
+  await assert.rejects(analyzeConversation(messages, null, null, options), /HTTP 503.*temporarily unavailable/);
+});
+test('rate-limit errors tell users to wait rather than change keys', async t => {
+  mockFetch(t, {}, 429);
+  await assert.rejects(analyzeConversation(messages, null, null, options), /HTTP 429.*rate limit or quota/);
+});
 test('cloud timeout aborts the request', async t => {
   const original = globalThis.fetch;
   let aborted = false;
@@ -128,7 +136,7 @@ for (const invalid of [
 }
 test('Unicode quotes are verified without discarding their characters', () => {
   const source = msg('José', 'Enviaré el informe mañana.');
-  assert.equal(validateAnalysis({ action_items: [{ quote: source.text, source_id: source.id, owner: 'José' }] }, [source]).action_items[0].text, source.text);
+  assert.equal(validateAnalysis({ summary_points: [{ quote: source.text, source_id: source.id }] }, [source]).summary_points[0], source.text);
 });
 test('invented and merely discussed owners are removed', () => {
   for (const owner of ['Imaginary', 'Al', 'Bob']) {
@@ -229,4 +237,64 @@ test('dedupe preserves conflicting explicit owners, removes actual duplicates an
   assert.equal(result.length, 2);
   assert.deepEqual(result.map(item => item.owner).sort(), ['Alice', 'Bob']);
   assert.deepEqual([alice, bob, unassigned], original);
+});
+
+test('model cannot put a verified decision into every result category', async t => {
+  const quote = 'We decided to launch on Friday.';
+  const item = { text: quote, quote, source_id: 'msg_02', owner: 'Bob', priority: 'high' };
+  mockFetch(t, chatReply(JSON.stringify({ action_items: [item], decisions: [item], needs_you: [item], open_questions: [item] })));
+  const result = await analyzeConversation([msg('Alice', 'I will send the release notes.'), msg('Bob', quote, 'msg_02')], null, null, options);
+  assert.deepEqual(result.action_items.map(item => item.owner), ['Alice']);
+  assert.equal(result.decisions.length, 1);
+  assert.deepEqual(result.needs_you, []);
+  assert.deepEqual(result.open_questions, []);
+});
+test('model cannot reintroduce a question already answered in the conversation', async t => {
+  const source = msg('Alice', 'Where is the release checklist?');
+  mockFetch(t, chatReply(JSON.stringify({ open_questions: [{ quote: source.text, source_id: source.id }] })));
+  const result = await analyzeConversation([source, msg('Bob', 'The release checklist is in docs/release.md.', 'msg_02')], null, null, options);
+  assert.deepEqual(result.open_questions, []);
+});
+test('model attention findings respect the selected target user', async t => {
+  const source = msg('Alice', '@Bob please review the release checklist.');
+  mockFetch(t, chatReply(JSON.stringify({ needs_you: [{ quote: source.text, source_id: source.id }] })));
+  assert.deepEqual((await analyzeConversation([source], null, 'Charlie', options)).needs_you, []);
+});
+test('smart punctuation is normalized only for matching; evidence stays unchanged', () => {
+  const source = msg('Alice', 'I’ll prepare the demo.');
+  const result = extractDeterministicFindings([source]);
+  assert.equal(result.fallbackActions[0].quote, source.text);
+  for (const text of ['I can’t deploy today.', 'I won’t run the migration.']) {
+    assert.deepEqual(validateAnalysis({ action_items: [{ quote: text, source_id: 'msg_01' }] }, [msg('Bob', text)]).action_items, []);
+  }
+  const decision = 'We haven’t agreed to launch.';
+  assert.deepEqual(validateAnalysis({ decisions: [{ quote: decision, source_id: 'msg_01' }] }, [msg('Alice', decision)]).decisions, []);
+});
+test('neural owner cannot redirect a first-person promise to its @recipient', () => {
+  const text = '@Bob I’ll update the report.';
+  const result = validateAnalysis({ action_items: [{ quote: text, source_id: 'msg_01', owner: 'Bob' }] }, [msg('Alice', text)]);
+  assert.equal(result.action_items[0].owner, null);
+  assert.equal(extractDeterministicFindings([msg('Alice', text)]).fallbackActions[0].owner, 'Alice');
+});
+test('accepting one task before asking a separate question still confirms the task', () => {
+  const result = extractDeterministicFindings([msg('Alice', 'Bob, can you update the release checklist?'), msg('Bob', 'Will do. Also, who is handling the demo?', 'msg_02')]);
+  assert.equal(result.fallbackActions[0].owner, 'Bob');
+});
+test('a later keyword echo or distant acknowledgement cannot resolve a question', () => {
+  for (const answer of ['Great!', 'The deployment checklist needs review.', 'The deployment checklist is not ready.', 'I will find the deployment checklist.']) {
+    const result = extractDeterministicFindings([msg('Alice', 'Where is the deployment checklist?'), msg('Bob', 'Let me check.', 'msg_02'), msg('Carol', 'Good morning.', 'msg_03'), msg('Dave', answer, 'msg_04')]);
+    assert.ok(result.fallbackQuestions.some(item => item.source_id === 'msg_01'), answer);
+  }
+});
+test('a substantive late answer can resolve an initially blocked question', () => {
+  const result = extractDeterministicFindings([msg('Alice', 'Where is the deployment checklist?'), msg('Bob', 'Not yet, still waiting.', 'msg_02'), msg('Carol', 'Good morning.', 'msg_03'), msg('Dave', 'The deployment checklist is in docs/deploy.md.', 'msg_04')]);
+  assert.ok(!result.fallbackQuestions.some(item => item.source_id === 'msg_01'));
+});
+test('a task to find an answer does not mean an information question was answered', () => {
+  const result = extractDeterministicFindings([msg('Alice', 'Where is the release checklist?'), msg('Bob', 'I will find the release checklist.', 'msg_02')]);
+  assert.ok(result.fallbackQuestions.some(item => item.source_id === 'msg_01'));
+});
+test('answers about another numbered item cannot close the original question', () => {
+  const result = extractDeterministicFindings([msg('Alice', 'Where is artifact number 1?'), msg('Bob', 'Artifact number 10 is in the release folder.', 'msg_02'), msg('Carol', 'Good morning.', 'msg_03'), msg('Dave', 'Artifact number 2 is in the archive.', 'msg_04')]);
+  assert.ok(result.fallbackQuestions.some(item => item.source_id === 'msg_01'));
 });

@@ -2,7 +2,7 @@
 ### Conversation Analyst with Local and Optional Cloud Processing
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-180%2F180_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-203%2F203_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
 [![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_3.5_Flash_Lite-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
@@ -76,7 +76,7 @@ CatchUp empowers users to pick the ideal execution profile right from the top na
 | 📝 **Executive Summary** | **Synthesized Briefing** | Generates concise, high-signal summary bullet points highlighting project status, key milestones, and critical risks. |
 | 📋 **Action Items** | **Interactive Checklist** | Extracts tasks with explicit or inferred owners (`@Alice`), source quotes, and clickable checkboxes with strike-through completion states. |
 | 🎯 **Decisions Made** | **Consensus Register** | Distinguishes finalized agreements from tentative proposals, filtering out speculative hedges and "TBD" items. |
-| ❓ **Open Questions** | **Temporal Resolution** | Tracks unresolved questions and automatically resolves questions that were answered within 2 subsequent messages using semantic and token overlap. |
+| ❓ **Open Questions** | **Temporal Resolution** | Tracks unresolved questions and automatically resolves questions that were answered using nearby acknowledgements or later substantive answers with matching topics. |
 | 🎛️ **View Switcher** | **No-Scroll Dashboard** | Toggle between **Overview** (2-column balanced executive dashboard) and focused single-category views (`Needs You`, `Tasks`, `Decisions`, `Questions`). |
 | 📤 **Export & Report** | **One-Click Sharing** | Formats findings into an executive Markdown report with one-click clipboard copying (with fallback) and direct `.md` file download. |
 
@@ -180,14 +180,15 @@ d:\PALS_\
 ├── style.css                    # Design system tokens, multi-column bento grid, dark/light accents
 ├── app.js                       # UI controller, state management, safe DOM rendering, export handlers
 ├── engine.js                    # WebLLM wrapper, Llama-3.2 prompt lifecycle, quote evidence validator
+├── report.js                    # Shared clipboard/download Markdown formatter
 ├── evidence.js                  # Exact source validation and extractive AI results
 ├── heuristics.js                # Deterministic pattern extractor, negation filter, owner-aware dedupe
 ├── vercel.json                  # Production headers (X-Frame-Options, X-Content-Type-Options, nosniff)
 ├── AGENTS.md                    # Project-wide architecture principles and rules
 ├── README.md                    # Comprehensive documentation and architecture specification
 │
-└── test_regression/             # Automated test harnesses (180 passing tests)
-    ├── reliability.test.mjs     # Native production-module tests (64 tests)
+└── test_regression/             # Automated test harnesses (203 passing tests)
+    ├── reliability.test.mjs     # Native production-module tests (76 tests)
     ├── runner.js                # Core regression runner (26 unit & contract tests)
     ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
     └── adversarial.js           # Adversarial suite (28 real-world edge-case tests)
@@ -197,7 +198,7 @@ d:\PALS_\
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **180 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **203 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
@@ -206,14 +207,16 @@ npm test
 
 ### Breakdown of Test Suites:
 
-0. **`reliability.test.mjs` (64 tests using native imports of production modules)**:
+0. **`reliability.test.mjs` (76 tests using native imports of production modules)**:
    - Provider isolation, redirect refusal, secure custom URLs, timeouts, and current Gemini request format.
    - Exact quote/source matching, Unicode evidence, unsupported owners, malformed responses, and source-linked summary points.
    - WhatsApp imports, speaker preservation, explicit unsupported-format errors, negation, acknowledgements, and owner conflicts.
    - Cloud requests are mocked with fake keys; no billable requests or model downloads occur.
 
+   **`evaluation.test.mjs` (11 conversation and export checks)** uses ten synthetic chats with expected source IDs, owners, decisions, and open questions. It also verifies completed task export. The corpus is small and does not establish general accuracy.
+
 1. **`runner.js` (26 Contract & Engine Tests)**:
-   - Explicit assignee vs. sender recognition (`@Bob I will do it` → owner: Bob).
+   - First-person ownership (`@Bob I will do it` → owner: the speaker, not Bob).
    - Non-assignment mention filtering.
    - Dynamic `targetUser` matching and null-fallback routing.
    - Negation filtering (`"I can't make it"` is never an action).
@@ -277,6 +280,7 @@ Open your browser at `http://localhost:8000`.
 
 - `engine.js` exports `DEFAULT_GEMINI_MODEL`; the UI reads the same default. It currently uses `gemini-3.5-flash-lite`. See [Google’s model lifecycle documentation](https://firebase.google.com/docs/ai-logic/faq-and-troubleshooting#deprecated-shut-down-models) before changing models.
 - Named providers ignore saved custom URLs. Only Custom mode can use a custom URL; API keys remain provider-specific.
+- AI categories are conservative: attention, decisions, and open questions need rule corroboration; tasks need explicit action language. English contractions with straight or smart apostrophes are matched without changing source quotes. This can miss implicit or non-English findings.
 - AI finding text is extractive. Quotes are case-sensitive substrings of the specified source; IDs are never silently reassigned. Unsupported summaries use the deterministic briefing instead. These checks establish provenance, not factual or semantic certainty.
 - Unknown JSON fields are ignored and malformed finding entries are dropped. Invalid JSON, empty responses, HTTP failures, and timeouts produce actionable errors without displaying raw response text.
 - Unicode, hyphenated and apostrophe-containing names and common iOS/Android WhatsApp exports are supported. Known unsupported Slack/Discord headers produce errors instead of silently discarding speakers. Timestamped system notices are skipped.
@@ -300,6 +304,6 @@ Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
 
 * **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
 * **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 180-test regression harness, adversarial stress testing.
+* **Testing & Hardening**: 203-test regression harness, adversarial stress testing.
 
 *CatchUp — Catch up on what matters. Local processing or your chosen cloud provider.*

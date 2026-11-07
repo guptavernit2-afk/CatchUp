@@ -1,0 +1,53 @@
+[
+  {
+    "id": "standup",
+    "chat": "Alice: I will finish the login page today.\nBob: I will review the login pull request tomorrow.\nCarol: We decided to use PostgreSQL.\nDave: Who will update the deployment documentation?",
+    "expected": { "tasks": [{ "source": "msg_01", "owner": "Alice" }, { "source": "msg_02", "owner": "Bob" }], "decisions": ["msg_03"], "questions": ["msg_04"] }
+  },
+  {
+    "id": "accepted_assignment",
+    "chat": "Alice: Bob, can you update the release checklist?\nBob: Will do.",
+    "expected": { "tasks": [{ "source": "msg_01", "owner": "Bob" }], "decisions": [], "questions": [] }
+  },
+  {
+    "id": "negation",
+    "chat": "Alice: We never agreed to deploy today.\nBob: I won't run the migration.\nCarol: Deployment is still pending.",
+    "expected": { "tasks": [], "decisions": [], "questions": ["msg_03"] }
+  },
+  {
+    "id": "answered_question",
+    "chat": "Alice: Where is the release checklist?\nBob: The release checklist is in docs/release.md.",
+    "expected": { "tasks": [], "decisions": [], "questions": [] }
+  },
+  {
+    "id": "unrelated_ack",
+    "chat": "Alice: Where is the production password?\nBob: Great!",
+    "expected": { "tasks": [], "decisions": [], "questions": ["msg_01"] }
+  },
+  {
+    "id": "delayed_answer",
+    "chat": "Alice: Where is the deployment checklist?\nBob: I will fix the login bug.\nCarol: The test suite passed.\nDave: The documentation is ready.\nBob: The deployment checklist is in docs/deploy.md.",
+    "expected": { "tasks": [{ "source": "msg_02", "owner": "Bob" }], "decisions": [], "questions": [] }
+  },
+  {
+    "id": "smart_apostrophes",
+    "chat": "Alice: I’ll update the checklist.\nBob: I can’t deploy today.\nCarol: We haven’t agreed to launch.",
+    "expected": { "tasks": [{ "source": "msg_01", "owner": "Alice" }], "decisions": [], "questions": [] }
+  },
+  {
+    "id": "wrong_accepting_speaker",
+    "chat": "Alice: Bob, can you update the release checklist?\nCharlie: Sure, I will update the release checklist.",
+    "expected": { "tasks": [{ "source": "msg_02", "owner": "Charlie" }], "decisions": [], "questions": [] }
+  },
+  {
+    "id": "whatsapp_unicode",
+    "chat": "07/11/2026, 10:30 - José: I will prepare the demo.\n07/11/2026, 10:31 - Mary-Jane: We decided to launch on Friday.\n07/11/2026, 10:32 - Ananya: Who will verify the backup?",
+    "expected": { "tasks": [{ "source": "msg_01", "owner": "José" }], "decisions": ["msg_02"], "questions": ["msg_03"] }
+  },
+  {
+    "id": "target_self",
+    "target": "@Alice",
+    "chat": "Alice: @Alice I will prepare the demo.\nBob: @Alice please review the release checklist.",
+    "expected": { "tasks": [{ "source": "msg_01", "owner": "Alice" }], "decisions": [], "questions": [], "attention": ["msg_02"] }
+  }
+]

@@ -35,11 +35,11 @@ const runTest = (name, messages, expected) => {
 console.log('CatchUp Extraction Regression Suite\n');
 
 // 1. Explicit assignee vs message sender
-runTest('Explicit assignee recognition', 
+runTest('First-person commitment belongs to speaker despite an @mention',
   [createMsg('01', 'Alice', '@Bob I will finish the report')],
   (res) => {
     assert.strictEqual(res.fallbackActions.length, 1);
-    assert.strictEqual(res.fallbackActions[0].owner, 'Bob', 'Task should be assigned to @Bob');
+    assert.strictEqual(res.fallbackActions[0].owner, 'Alice', 'Alice says I will; Bob is the recipient');
   }
 );
 

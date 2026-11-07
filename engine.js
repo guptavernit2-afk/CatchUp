@@ -41,7 +41,12 @@ async function requestJson(endpoint, init, timeoutMs = 60000) {
   try {
     // Do not forward a transcript or credentials through an endpoint redirect.
     const response = await fetch(endpoint, { ...init, redirect: 'error', signal: controller.signal });
-    if (!response.ok) throw new Error(`Provider request failed (HTTP ${response.status}). Check your API key, model access, and quota.`);
+    if (!response.ok) {
+      const guidance = response.status >= 500 ? 'The provider is temporarily unavailable. Try again shortly or choose Instant Rules.'
+        : response.status === 429 ? 'The provider rate limit or quota was reached. Wait before retrying or choose Instant Rules.'
+        : 'Check your API key, model access, and quota.';
+      throw new Error(`Provider request failed (HTTP ${response.status}). ${guidance}`);
+    }
     try { return await response.json(); } catch (error) {
       if (controller.signal.aborted) throw error;
       throw new Error('Provider returned invalid JSON. Try again or choose Instant Rules.');
@@ -372,7 +377,7 @@ export async function analyzeConversation(messages, onProgress, targetUser = nul
     }
   }
 
-  const validated = validateAnalysis(parsed, messages);
+  const validated = validateAnalysis(parsed, messages, targetUser);
   const fallback = await analyzeConversation(messages, null, targetUser, { mode: 'heuristic' });
   return {
     processing_mode: mode,
