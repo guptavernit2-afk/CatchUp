@@ -1,0 +1,9 @@
+{
+  "name": "catchup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test_regression/reliability.test.mjs && node test_regression/runner.js && node test_regression/deep_stress.js && node test_regression/adversarial.js"
+  },
+  "engines": { "node": ">=18" }
+}

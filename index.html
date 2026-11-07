@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchUp — Catch up on what matters</title>
-  <meta name="description" content="CatchUp analyzes your conversations locally using AI. No data leaves your device.">
+  <meta name="description" content="CatchUp turns conversations into tasks, decisions, and questions with on-device processing or your own cloud API provider.">
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,7 +64,7 @@
               <span class="tag-badge">WebLLM Engine</span>
             </div>
             <h1 class="page-title">Catch up on what matters.</h1>
-            <p class="page-subtitle">Paste a conversation and get an instant, private breakdown of decisions, action items, and open questions — analyzed directly in your browser.</p>
+            <p class="page-subtitle">Paste a conversation and get a breakdown of decisions, action items, and open questions. Choose on-device processing or your own cloud API provider.</p>
           </div>
 
           <!-- Model status -->
@@ -158,7 +158,7 @@
                   <div class="cloud-input-group">
                     <label for="cloud-provider-select" class="cloud-field-label">Provider</label>
                     <select id="cloud-provider-select" class="cloud-select">
-                      <option value="gemini" selected>Google Gemini (gemini-1.5-flash) — Recommended</option>
+                      <option value="gemini" selected>Google Gemini — Recommended</option>
                       <option value="groq">Groq (llama-3.1-8b-instant) — Ultra-fast</option>
                       <option value="openai">OpenAI (gpt-4o-mini)</option>
                       <option value="custom">Custom Endpoint (Ollama / Proxy)</option>
@@ -413,7 +413,7 @@
               </div>
               <div>
                 <h3>Privacy first</h3>
-                <p>Your conversation text never leaves your device. The AI model runs locally using your GPU. Only the model weights are downloaded once and cached — no conversation data is ever transmitted to any server.</p>
+                <p>Local Private and Instant Rules process conversation text on your device. Local Private downloads model weights when first used. Cloud Turbo sends the transcript directly to your selected API provider using your saved key.</p>
               </div>
             </div>
             <div class="about-card">
@@ -424,9 +424,9 @@
                 <h3>How it works</h3>
                 <ol>
                   <li>Paste or load a sample conversation</li>
-                  <li>The AI model initializes in your browser (first time takes ~30s)</li>
-                  <li>Analysis runs entirely on your device's GPU</li>
-                  <li>Results are parsed, validated against source messages, and displayed</li>
+                  <li>Choose Local Private, Cloud Turbo, or Instant Rules</li>
+                  <li>The selected engine analyzes the conversation; Local Private downloads its model on first use</li>
+                  <li>AI findings require exact quotes from the cited messages; classifications can still be imperfect</li>
                 </ol>
               </div>
             </div>
@@ -439,6 +439,6 @@
   </div>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-  <script type="module" src="app.js?v=12"></script>
+  <script type="module" src="app.js?v=13"></script>
 </body>
 </html>

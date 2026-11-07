@@ -134,13 +134,8 @@ runTest('parse', 'WhatsApp style "[12/10/2024, 10:30 AM] Alice: Hi"', () => {
   assert.strictEqual(msgs[0].sender, 'Alice');
 });
 
-runTest('parse', 'Discord style "Alice — Today at 10:30 AM" NOT parsed (no colon)', () => {
-  // Lines without the "Name: text" pattern should not break parser
-  const msgs = parseConversation('Alice — Today at 10:30 AM\nHello everyone\nBob: Sounds good');
-  // Should get at least Bob's message
-  assert.ok(msgs.length >= 1);
-  const bobMsg = msgs.find(m => m.sender === 'Bob');
-  assert.ok(bobMsg, 'Bob message should be parsed');
+runTest('parse', 'Unsupported Discord headers fail explicitly instead of dropping speakers', () => {
+  assert.throws(() => parseConversation('Alice — Today at 10:30 AM\nHello everyone\nBob: Sounds good'), /Unsupported Slack\/Discord header/);
 });
 
 
@@ -423,7 +418,8 @@ runTest('dedupe', 'Different owner on same source preserved', () => {
   const f1 = { text: 'Do the work', quote: 'Do the work', source_id: 'msg_01', owner: 'Alice' };
   const f2 = { text: 'Do the work', quote: 'Do the work', source_id: 'msg_01', owner: 'Bob' };
   const result = dedupe([f1], [f2]);
-  assert.ok(result.length >= 1, 'At least one entry should remain');
+  assert.strictEqual(result.length, 2, 'Both explicit owners must remain');
+  assert.deepStrictEqual(result.map(item => item.owner).sort(), ['Alice', 'Bob']);
 });
 
 runTest('dedupe', 'Finding with null/missing source_id is excluded', () => {

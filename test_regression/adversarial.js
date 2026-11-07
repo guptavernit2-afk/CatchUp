@@ -225,10 +225,8 @@ runTest('fp-decisions', '"The status is TBD" must NOT be a decision', () => {
 // ═══════════════════════════════════════════════
 console.log('\n── PARSE: Edge Cases ──\n');
 
-runTest('parse-adv', 'Slack-style "Name APP 10:30 AM: text" not parsed as valid', () => {
-  const msgs = parseConversation('Slackbot  10:30 AM\nThis is a Slackbot message\nAlice: I see that');
-  const alice = msgs.find(m => m.sender === 'Alice');
-  assert.ok(alice, 'Alice message should be parsed correctly');
+runTest('parse-adv', 'Unsupported Slack headers fail explicitly instead of dropping speakers', () => {
+  assert.throws(() => parseConversation('Slackbot  10:30 AM\nThis is a Slackbot message\nAlice: I see that'), /Unsupported Slack\/Discord header/);
 });
 
 runTest('parse-adv', 'Tab-indented continuation lines handled', () => {
@@ -254,7 +252,10 @@ runTest('parse-adv', 'Very large conversation (200 msgs) counter stays accurate'
 
 runTest('parse-adv', 'Message with hyphenated name parsed correctly', () => {
   const msgs = parseConversation('Mary-Jane: Hello everyone\nBob: Hi there');
-  assert.ok(msgs.length >= 1, 'Should parse at least one message');
+  assert.strictEqual(msgs.length, 2, 'Neither speaker may be lost');
+  assert.strictEqual(msgs[0].sender, 'Mary-Jane');
+  assert.strictEqual(msgs[0].text, 'Hello everyone');
+  assert.strictEqual(msgs[1].sender, 'Bob');
 });
 
 runTest('parse-adv', 'Message number > 99 gets correct ID format', () => {

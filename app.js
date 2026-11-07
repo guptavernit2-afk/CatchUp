@@ -6,7 +6,7 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
-import { initEngine, isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport } from './engine.js?v=12';
+import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=13';
 
 // ── Sample Conversation ──
 const SAMPLE_CONVERSATION = `Alice: Hey, are we still meeting for the hackathon planning tomorrow at 10 AM?
@@ -314,6 +314,8 @@ function updateKeyStatusDisplay() {
 function setEngineMode(mode) {
   currentEngineMode = mode;
   localStorage.setItem('catchup_engine_mode', mode);
+  const privacyDetail = document.querySelector('.privacy-detail');
+  if (privacyDetail) privacyDetail.textContent = mode === 'cloud' ? 'Sent directly to your API provider' : 'Conversation analysis stays on-device';
 
   // Update radio buttons and active classes
   if (dom.optModeLocal) dom.optModeLocal.classList.toggle('active', mode === 'local');
@@ -376,7 +378,12 @@ async function runAnalysis() {
     return;
   }
 
-  currentMessages = parseConversation(raw);
+  try {
+    currentMessages = parseConversation(raw);
+  } catch (error) {
+    dom.inputHint.textContent = error.message;
+    return;
+  }
   if (currentMessages.length < 2) {
     dom.inputHint.textContent = 'Could not detect messages. Use the format "Name: message", one per line.';
     return;
@@ -418,7 +425,7 @@ async function runAnalysis() {
       mode: currentEngineMode,
       apiProvider: provider,
       apiKey: apiKey,
-      customEndpoint: dom.cloudCustomEndpoint ? dom.cloudCustomEndpoint.value.trim() : ''
+      customEndpoint: provider === 'custom' && dom.cloudCustomEndpoint ? dom.cloudCustomEndpoint.value.trim() : ''
     };
 
     const result = await analyzeConversation(currentMessages, (info) => {
@@ -500,6 +507,10 @@ function switchTab(tabId) {
 
 function renderResults(data) {
   lastAnalysisResult = data;
+  const subtitle = $('results-subtitle');
+  if (subtitle) subtitle.textContent = data.processing_mode === 'cloud'
+    ? 'Processed by your selected cloud API provider'
+    : data.processing_mode === 'heuristic' ? 'Processed on-device with Instant Rules' : 'Processed on-device with local AI';
 
   const countNY = (data.needs_you || []).length;
   const countAct = (data.action_items || []).length;
@@ -648,7 +659,9 @@ function generateMarkdown(data) {
   if (!data) return '';
   const lines = [];
   lines.push('# CatchUp — Conversation Analysis Report');
-  lines.push(`*Generated on ${new Date().toLocaleString()} · 100% On-Device AI*\n`);
+  const processingLabel = data.processing_mode === 'cloud' ? 'Cloud API analysis'
+    : data.processing_mode === 'heuristic' ? 'On-device rule analysis' : 'On-device AI analysis';
+  lines.push(`*Generated on ${new Date().toLocaleString()} · ${processingLabel}*\n`);
 
   if (data.summary_points && data.summary_points.length > 0) {
     lines.push('## Executive Summary');
@@ -883,6 +896,10 @@ if (dom.keyToggleBtn && dom.cloudApiKey) {
 }
 
 // Initial engine mode setup
+if (dom.cloudProviderSelect) {
+  const geminiOption = dom.cloudProviderSelect.querySelector('option[value="gemini"]');
+  if (geminiOption) geminiOption.textContent = `Google Gemini (${DEFAULT_GEMINI_MODEL}) — Recommended`;
+}
 setEngineMode(currentEngineMode);
 updateKeyStatusDisplay();
 

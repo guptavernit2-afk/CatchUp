@@ -1,13 +1,13 @@
 # CatchUp ⚡
-### 100% In-Browser AI Conversation Analyst & Executive Triage Console
+### Conversation Analyst with Local and Optional Cloud Processing
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-116%2F116_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
+[![Engine Status](https://img.shields.io/badge/Test_Suite-180%2F180_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
-[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_1.5_Flash-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
+[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_3.5_Flash_Lite-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
 [![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
 
-> **CatchUp** turns chaotic, 200+ message chat dumps (Slack, WhatsApp, Teams, Discord) into an organized, prioritized executive dashboard in seconds — running **100% privately in your browser** using on-device WebGPU inference. Zero server APIs. Zero data leaks.
+> **CatchUp** turns conversation transcripts into a dashboard of tasks, decisions, and questions. Local Private and Instant Rules process conversation text on-device; optional Cloud Turbo sends transcripts directly to the selected API provider. Import supports `Name: message`, timestamped messages, and common WhatsApp text exports. Reformat unsupported Slack/Discord exports before analysis.
 
 ---
 
@@ -37,9 +37,9 @@ Traditional solutions require sending confidential company transcripts to third-
 ### The Walkaway (Value Proposition)
 CatchUp delivers a complete **Executive Triage Console** tailored to user privacy needs:
 1. **Total Privacy Guarantee (Local Hero)**: The conversation transcript **never leaves the user's browser**. Model weights run 100% locally via WebGPU shaders.
-2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 1.5 Flash, Groq, OpenAI) or an instant 5ms deterministic rule engine.
+2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 3.5 Flash-Lite, Groq, OpenAI) or an instant 5ms deterministic rule engine.
 3. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
-4. **Zero Hallucination with Source Grounding**: Every extracted deliverable, task, decision, and question is strictly validated against the source text character-by-character.
+4. **Source-grounded findings**: AI findings must include an exact quote from the specified message. Displayed finding text uses that quote; unsupported owners and free-form summaries are discarded. Source checks do not guarantee correct classification or interpretation.
 
 ---
 
@@ -57,8 +57,8 @@ CatchUp empowers users to pick the ideal execution profile right from the top na
 
 | Engine Mode | Execution Runtime | Privacy Level | Speed / Latency | Best Used For |
 | :--- | :--- | :--- | :--- | :--- |
-| 🛡️ **Local Private** *(Default)* | **WebGPU** / Llama 3.2 1B Instruct via WebLLM | **100% On-Device** (Zero data leaves browser) | Initial load ~1.5GB model cache; inference ~2-5s | **Sensitive conversations**, enterprise IP, proprietary code, GDPR/HIPAA compliance |
-| ⚡ **Cloud Turbo** | **Direct Client API** (Gemini 1.5 Flash, Groq Llama 3.1, OpenAI GPT-4o-mini) | **Direct to Provider** (Zero intermediate servers, BYOK) | Lightning fast (<1.5s total turnaround) | Non-sensitive transcripts, large threads, low-spec devices without WebGPU |
+| 🛡️ **Local Private** *(Default)* | **WebGPU** / Llama 3.2 1B Instruct via WebLLM | **100% On-Device** (Zero data leaves browser) | Initial load ~1.5GB model cache; inference ~2-5s | **Sensitive conversations**, enterprise IP, proprietary code, private work transcripts |
+| ⚡ **Cloud Turbo** | **Direct Client API** (Gemini 3.5 Flash-Lite, Groq Llama 3.1, OpenAI GPT-4o-mini) | **Direct to Provider** (Zero intermediate servers, BYOK) | Lightning fast (<1.5s total turnaround) | Non-sensitive transcripts, large threads, low-spec devices without WebGPU |
 | ⏱️ **Instant Rules** | **Pure JavaScript** Deterministic Heuristic Engine | **100% Offline** (Zero network, zero download) | **~5ms instant** | Immediate triage, mobile browsers, emergency fallback if WebGPU is unsupported |
 
 > [!NOTE]
@@ -137,8 +137,8 @@ Most conversational AI assistants rely purely on LLM generation, leading to thre
 ### The CatchUp Difference:
 CatchUp pairs **Llama 3.2 1B (via WebGPU)** with **Stateless Deterministic Heuristics**:
 - **Strict Evidence Validation**: Every neural finding is cross-checked against the raw message text. If the quote cannot be verified character-for-character, it is discarded.
-- **Two-Pass Deduplication (`dedupe()`)**: Synthesizes LLM discoveries with deterministic pattern-matching. If both streams identify the same task, they collapse into a single verified item; if owners diverge, both perspectives are preserved.
-- **Guaranteed Fallback**: Even if WebGPU initialization is slow or unsupported, the deterministic heuristics instantly surface urgent mentions, confirmed tasks, decisions, and open blockers.
+- **Owner-aware deduplication (`dedupe()`)**: Synthesizes LLM discoveries with deterministic pattern-matching. If both streams identify the same task, they collapse into a single verified item; if owners diverge, both perspectives are preserved.
+- **Independent rule engine**: Instant Rules does not load WebLLM. Browsers without WebGPU switch to it automatically; provider or inference failures show an error so users can retry or choose another mode.
 
 ---
 
@@ -180,13 +180,15 @@ d:\PALS_\
 ├── style.css                    # Design system tokens, multi-column bento grid, dark/light accents
 ├── app.js                       # UI controller, state management, safe DOM rendering, export handlers
 ├── engine.js                    # WebLLM wrapper, Llama-3.2 prompt lifecycle, quote evidence validator
-├── heuristics.js                # Deterministic pattern extractor, negation filter, two-pass dedupe
+├── evidence.js                  # Exact source validation and extractive AI results
+├── heuristics.js                # Deterministic pattern extractor, negation filter, owner-aware dedupe
 ├── vercel.json                  # Production headers (X-Frame-Options, X-Content-Type-Options, nosniff)
 ├── AGENTS.md                    # Project-wide architecture principles and rules
 ├── README.md                    # Comprehensive documentation and architecture specification
 │
-└── test_regression/             # Automated test harnesses (113 passing tests)
-    ├── runner.js                # Core regression runner (23 unit & contract tests)
+└── test_regression/             # Automated test harnesses (180 passing tests)
+    ├── reliability.test.mjs     # Native production-module tests (64 tests)
+    ├── runner.js                # Core regression runner (26 unit & contract tests)
     ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
     └── adversarial.js           # Adversarial suite (28 real-world edge-case tests)
 ```
@@ -195,16 +197,20 @@ d:\PALS_\
 
 ## 🧪 Verification & Test Suite
 
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **116 automated tests** with **0 failures**:
+CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **180 automated tests** with **0 failures**:
 
 ```bash
 # Run all regression and stress suites
-node test_regression/runner.js
-node test_regression/deep_stress.js
-node test_regression/adversarial.js
+npm test
 ```
 
 ### Breakdown of Test Suites:
+
+0. **`reliability.test.mjs` (64 tests using native imports of production modules)**:
+   - Provider isolation, redirect refusal, secure custom URLs, timeouts, and current Gemini request format.
+   - Exact quote/source matching, Unicode evidence, unsupported owners, malformed responses, and source-linked summary points.
+   - WhatsApp imports, speaker preservation, explicit unsupported-format errors, negation, acknowledgements, and owner conflicts.
+   - Cloud requests are mocked with fake keys; no billable requests or model downloads occur.
 
 1. **`runner.js` (26 Contract & Engine Tests)**:
    - Explicit assignee vs. sender recognition (`@Bob I will do it` → owner: Bob).
@@ -267,11 +273,20 @@ Open your browser at `http://localhost:8000`.
 
 ---
 
+### Reliability contracts
+
+- `engine.js` exports `DEFAULT_GEMINI_MODEL`; the UI reads the same default. It currently uses `gemini-3.5-flash-lite`. See [Google’s model lifecycle documentation](https://firebase.google.com/docs/ai-logic/faq-and-troubleshooting#deprecated-shut-down-models) before changing models.
+- Named providers ignore saved custom URLs. Only Custom mode can use a custom URL; API keys remain provider-specific.
+- AI finding text is extractive. Quotes are case-sensitive substrings of the specified source; IDs are never silently reassigned. Unsupported summaries use the deterministic briefing instead. These checks establish provenance, not factual or semantic certainty.
+- Unknown JSON fields are ignored and malformed finding entries are dropped. Invalid JSON, empty responses, HTTP failures, and timeouts produce actionable errors without displaying raw response text.
+- Unicode, hyphenated and apostrophe-containing names and common iOS/Android WhatsApp exports are supported. Known unsupported Slack/Discord headers produce errors instead of silently discarding speakers. Timestamped system notices are skipped.
+- `npm test` runs all suites with no installed dependencies. GitHub Actions runs them on Node 18, 22, and 24. Live WebGPU and authenticated provider smoke tests are separate manual checks.
+
 ## 🔒 Security & Privacy Blueprint
 
 - **Zero Remote Telemetry (Local Mode)**: CatchUp transmits 0 bytes of conversation data over the network in Local Private mode. All inference occurs in WebGPU shaders on your machine.
-- **Client-Side Secret Storage (Cloud Mode)**: When using Cloud Turbo, user API keys are stored exclusively in the browser's origin-scoped `localStorage`. No proxy server, logging, or token sniffing is ever performed.
-- **XSS Immunity (Safe DOM Only)**: Model and user strings are strictly inserted using `node.textContent` and `document.createElement`. No `innerHTML` or `eval` execution of external or AI-generated strings.
+- **Client-Side Secret Storage (Cloud Mode)**: Keys are persisted in origin-scoped `localStorage`, accessible to scripts running on this origin. Requests use provider-specific URLs and authentication headers. Custom URLs are used only in Custom mode, must use HTTPS (or HTTP on loopback), and may not embed URL credentials. Cloud redirects are rejected and requests time out after 60 seconds.
+- **Safe text rendering**: Model and user strings are strictly inserted using `node.textContent` and `document.createElement`. No `innerHTML` or `eval` execution of external or AI-generated strings.
 - **Hardened Deployment**: Configured via `vercel.json` with strict HTTP security headers:
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
@@ -285,6 +300,6 @@ Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
 
 * **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
 * **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 114-test regression harness, adversarial stress testing.
+* **Testing & Hardening**: 180-test regression harness, adversarial stress testing.
 
-*CatchUp — Catch up on what matters, 100% on your device.*
+*CatchUp — Catch up on what matters. Local processing or your chosen cloud provider.*
