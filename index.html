@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchUp — Catch up on what matters</title>
   <meta name="description" content="CatchUp turns conversations into tasks, decisions, and questions with on-device processing or your own cloud API provider.">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=20">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap" rel="stylesheet">
@@ -24,10 +24,18 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Analyze
         </a>
+        <a href="#" class="nav-item" id="nav-library">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/></svg>
+          My catch-ups <span id="library-count" class="tab-count-badge">0</span>
+        </a>
         <a href="#" class="nav-item" id="nav-about">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           About
         </a>
+        <section class="recent-section" aria-labelledby="recent-heading">
+          <h2 id="recent-heading">Recent</h2>
+          <div id="recent-catchups"><p class="recent-empty">Saved catch-ups will appear here.</p></div>
+        </section>
       </nav>
       <div class="sidebar-footer">
         <div class="privacy-badge" id="privacy-badge">
@@ -86,7 +94,7 @@
             <div class="target-user-row">
               <div class="target-user-field">
                 <svg class="target-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="target-user-input" class="target-user-input" placeholder="e.g. Alice or @Alice (optional)" autocomplete="off" />
+                <input aria-label="Your name (optional)" type="text" id="target-user-input" class="target-user-input" placeholder="e.g. Alice or @Alice (optional)" autocomplete="off" />
               </div>
               <p class="target-user-hint">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -95,7 +103,7 @@
             </div>
 
             <!-- Engine Mode Selector -->
-            <div class="engine-mode-card" id="engine-mode-card">
+            <div class="engine-mode-card" id="engine-mode-card" tabindex="-1">
               <div class="engine-mode-header">
                 <div class="engine-mode-header-left">
                   <svg class="engine-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
@@ -169,7 +177,7 @@
                     <label for="cloud-api-key" class="cloud-field-label">API Key</label>
                     <div class="cloud-key-input-wrapper">
                       <input type="password" id="cloud-api-key" class="cloud-text-input" placeholder="Paste your API key here (e.g. AIzaSy...)" autocomplete="off" />
-                      <button type="button" class="key-toggle-btn" id="key-toggle-btn" title="Toggle visibility">👁️</button>
+                      <button type="button" class="key-toggle-btn" id="key-toggle-btn" aria-label="Show or hide API key" title="Toggle visibility">👁️</button>
                     </div>
                   </div>
                 </div>
@@ -208,7 +216,7 @@
             </div>
 
             <div class="textarea-wrapper">
-              <textarea id="conversation-input" placeholder="Paste your conversation transcript here...&#10;&#10;Format: one message per line&#10;Alice: Hey, are we still meeting tomorrow?&#10;Bob: Yes, 3 PM works for me." spellcheck="false"></textarea>
+              <textarea aria-label="Conversation transcript" id="conversation-input" placeholder="Paste your conversation transcript here...&#10;&#10;Format: one message per line&#10;Alice: Hey, are we still meeting tomorrow?&#10;Bob: Yes, 3 PM works for me." spellcheck="false"></textarea>
               <div class="textarea-overlay">
                 <span class="char-count" id="char-count">0 characters</span>
               </div>
@@ -264,10 +272,11 @@
           <section class="results-workspace hidden" id="results-workspace">
             <div class="results-header">
               <div class="results-title-group">
-                <h2>Analysis Results</h2>
+                <h2 id="report-heading">Analysis Results</h2>
                 <span class="results-subtitle" id="results-subtitle">Inference completed 100% locally on device</span>
               </div>
               <div class="results-actions">
+                <button class="secondary-btn" id="save-catchup-btn" type="button">Save catch-up</button>
                 <button class="secondary-btn action-btn-export" id="copy-markdown-btn" type="button" title="Copy report as Markdown">
                   <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   <span id="copy-btn-text">Copy Markdown</span>
@@ -284,6 +293,7 @@
             </div>
 
             <!-- Metric Summary Bar -->
+            <p class="save-report-status" id="save-report-status" role="status"></p>
             <div class="metrics-bar" id="metrics-bar">
               <div class="metric-pill metric-needs-you" id="metric-needs-you" data-target="needs-you" role="button" tabindex="0">
                 <div class="metric-pill-left">
@@ -399,11 +409,24 @@
 
         </div>
 
+        <div class="page" id="page-library">
+          <div class="page-header"><h1 class="page-title">My catch-ups</h1><p class="page-subtitle">Reports you choose to save on this device, including their conversations and task progress.</p></div>
+          <div class="library-toolbar">
+            <button class="primary-btn" id="new-catchup-btn" type="button">New catch-up</button>
+            <label class="library-search">Find a catch-up<input id="library-search" type="search" placeholder="Search by title" maxlength="120"></label>
+            <div class="library-views" aria-label="Saved report view"><button class="secondary-btn active" id="library-saved-btn" type="button" aria-pressed="true">Saved</button><button class="secondary-btn" id="library-trash-btn" type="button" aria-pressed="false">Trash</button></div>
+          </div>
+          <p class="library-storage-note">Saved in this browser only. Nothing is saved automatically. Download Markdown for a copy you can keep outside the browser.</p>
+          <p id="library-feedback" class="library-feedback" role="status"></p>
+          <div id="library-list" class="library-list"></div>
+          <button class="secondary-btn hidden" id="library-retry-btn" type="button">Retry loading</button>
+        </div>
+
         <!-- ── Page: About ── -->
         <div class="page" id="page-about">
           <div class="page-header">
             <h1 class="page-title">About CatchUp</h1>
-            <p class="page-subtitle">Built for the PROTOCOL X hackathon by team PALS_.</p>
+            <p class="page-subtitle">Your personal workspace for catching up on conversations and keeping track of what matters.</p>
           </div>
           <div class="about-content">
             <div class="about-card">
@@ -412,7 +435,7 @@
               </div>
               <div>
                 <h3>What it does</h3>
-                <p>CatchUp uses a genuine pretrained AI model (Llama 3.2 1B) running entirely in your browser via WebLLM/WebGPU. Paste any conversation and get an instant breakdown of what needs your attention, action items, decisions, and open questions.</p>
+                <p>Turn a conversation into a briefing, tasks, decisions, and open questions. Add your name to highlight items that need you. Paste a transcript, upload a .txt or .md file, or try the sample to get started.</p>
               </div>
             </div>
             <div class="about-card">
@@ -420,8 +443,8 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
               <div>
-                <h3>Privacy first</h3>
-                <p>Local Private and Instant Rules process conversation text on your device. Local Private downloads model weights when first used. Cloud Turbo sends the transcript directly to your selected API provider using your saved key.</p>
+                <h3>Choose how to process</h3>
+                <p>Local Private keeps your conversation on this device and downloads a model on first use; it needs a compatible WebGPU browser. Instant Rules works on-device without a model download. Cloud Turbo sends your transcript to your chosen provider using your own API key, saved in this browser.</p>
               </div>
             </div>
             <div class="about-card">
@@ -429,12 +452,12 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               </div>
               <div>
-                <h3>How it works</h3>
+                <h3>Read your results</h3>
                 <ol>
-                  <li>Paste or load a sample conversation</li>
-                  <li>Choose Local Private, Cloud Turbo, or Instant Rules</li>
-                  <li>The selected engine analyzes the conversation; Local Private downloads its model on first use</li>
-                  <li>AI findings require exact quotes from the cited messages; classifications can still be imperfect</li>
+                  <li>Start with the summary, then explore tasks, decisions, and open questions.</li>
+                  <li>Requested tasks await acceptance. Confirmed tasks have a commitment or acceptance in the conversation.</li>
+                  <li>Checkboxes mark completion for this report. Use Save changes to update a saved catch-up, or copy/download Markdown to keep a separate copy.</li>
+                  <li>Use the quoted text and message references to verify findings. Extraction can miss context or classify a message incorrectly.</li>
                 </ol>
               </div>
             </div>
@@ -447,6 +470,21 @@
   </div>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-  <script type="module" src="app.js?v=15"></script>
+  <dialog id="save-catchup-dialog" class="catchup-dialog" aria-labelledby="save-dialog-title">
+    <form id="save-catchup-form">
+      <h2 id="save-dialog-title">Save catch-up</h2>
+      <p id="save-dialog-note">This saves the conversation, report, and task progress on this device. API keys are not included.</p>
+      <label for="catchup-title">Title</label><input id="catchup-title" type="text" maxlength="120" required autocomplete="off" placeholder="e.g. Release planning">
+      <p id="save-dialog-error" class="input-hint" role="alert"></p>
+      <div class="dialog-actions"><button class="secondary-btn" id="save-dialog-cancel" type="button">Cancel</button><button class="primary-btn" id="save-dialog-submit" type="submit">Save</button></div>
+    </form>
+  </dialog>
+  <dialog id="unsaved-catchup-dialog" class="catchup-dialog" aria-labelledby="unsaved-dialog-title">
+    <h2 id="unsaved-dialog-title">Unsaved changes</h2><p>Your task changes have not been saved. Keep editing to save them, or discard these changes and continue.</p><div class="dialog-actions"><button class="secondary-btn" id="unsaved-keep-btn" type="button">Keep editing</button><button class="primary-btn" id="unsaved-discard-btn" type="button">Discard changes</button></div>
+  </dialog>
+  <dialog id="delete-catchup-dialog" class="catchup-dialog" aria-labelledby="delete-dialog-title">
+    <form id="delete-catchup-form"><h2 id="delete-dialog-title">Delete permanently?</h2><p id="delete-dialog-note"></p><p id="delete-dialog-error" class="input-hint" role="alert"></p><div class="dialog-actions"><button class="secondary-btn" id="delete-dialog-cancel" type="button">Cancel</button><button class="primary-btn" id="delete-dialog-submit" type="submit">Delete permanently</button></div></form>
+  </dialog>
+  <script type="module" src="app.js?v=20"></script>
 </body>
 </html>

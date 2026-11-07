@@ -6,6 +6,7 @@
  * All model-generated content is rendered via safe DOM APIs (textContent / createTextNode).
  */
 
+import { createLibraryUI } from './library-ui.js';
 import { generateMarkdown } from './report.js';
 import { isEngineReady, parseConversation, analyzeConversation, checkWebGPUSupport, DEFAULT_GEMINI_MODEL } from './engine.js?v=15';
 
@@ -112,6 +113,22 @@ let isAnalyzing = false;
 let activeAnalysis = null;
 let currentMessages = [];
 let lastAnalysisResult = null;
+const libraryUI = createLibraryUI({
+  getSnapshot: () => ({ transcript: dom.textarea.value, targetUser: dom.targetUserInput.value, messages: currentMessages, result: lastAnalysisResult }),
+  isBusy: () => isAnalyzing,
+  navigate: navigateTo,
+  onNew: () => {
+    returnToInput(); dom.textarea.value = ''; updateCharCount();
+    lastAnalysisResult = null; currentMessages = [];
+  },
+  onOpen: record => {
+    returnToInput();
+    currentMessages = record.messages;
+    dom.textarea.value = record.transcript; dom.targetUserInput.value = record.targetUser;
+    updateCharCount(); renderResults(record.result); showView('results');
+  }
+});
+
 
 // ══════════════
 // Navigation
@@ -120,7 +137,10 @@ function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-  if (page === 'about') {
+  if (page === 'library') {
+    $('page-library').classList.add('active');
+    $('nav-library').classList.add('active');
+  } else if (page === 'about') {
     dom.pageAbout.classList.add('active');
     dom.navAbout.classList.add('active');
   } else {
@@ -128,6 +148,7 @@ function navigateTo(page) {
     dom.navAnalyze.classList.add('active');
   }
   closeSidebar();
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function closeSidebar() {
@@ -464,6 +485,7 @@ async function runAnalysis() {
     }
 
     renderResults(result);
+    libraryUI.generated();
     showView('results');
 
   } catch (err) {
@@ -508,7 +530,9 @@ dom.retryBtn.addEventListener('click', () => {
     runAnalysis();
   }
 });
-dom.newAnalysisBtn.addEventListener('click', () => {
+dom.newAnalysisBtn.addEventListener('click', async () => {
+  if (!(await libraryUI.canLeave())) return;
+  libraryUI.generated();
   showView('input');
   dom.textarea.focus();
 });
@@ -637,10 +661,13 @@ function renderCardList(container, items, section, showPriority = false, showOwn
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.className = 'task-checkbox';
-      checkbox.setAttribute('aria-label', 'Mark task complete');
+      checkbox.checked = Boolean(item.completed);
+      card.classList.toggle('completed', checkbox.checked);
+      checkbox.setAttribute('aria-label', `Complete task: ${cleanFindingText(item.text)}`);
       checkbox.addEventListener('change', () => {
         item.completed = checkbox.checked;
         card.classList.toggle('completed', checkbox.checked);
+        libraryUI.changed();
       });
 
       const body = document.createElement('div');

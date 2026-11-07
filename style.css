@@ -14,7 +14,7 @@
 
   --color-ink:        #1C1917; /* stone-900 */
   --color-ink-secondary: #57534E; /* stone-600 */
-  --color-ink-tertiary:  #A8A29E; /* stone-400 */
+  --color-ink-tertiary:  #706A64; /* readable secondary metadata */
 
   --color-accent:     #4F46E5; /* indigo-600 */
   --color-accent-hover:#4338CA; /* indigo-700 */
@@ -234,6 +234,7 @@ body {
 /* ── Main Content ── */
 .main-content {
   flex: 1;
+  min-width: 0;
   margin-left: var(--sidebar-width);
   display: flex;
   justify-content: center;
@@ -242,6 +243,7 @@ body {
 
 .content-wrapper {
   width: 100%;
+  min-width: 0;
   max-width: var(--content-max);
 }
 
@@ -495,7 +497,7 @@ body {
 
 .engine-mode-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -551,7 +553,7 @@ body {
 }
 
 .option-tag {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   padding: 1px 5px;
@@ -574,7 +576,7 @@ body {
 .option-sub {
   font-size: 11px;
   color: var(--color-ink-tertiary);
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 /* ── Collapsible Cloud API Config Drawer ── */
@@ -623,11 +625,11 @@ body {
   flex-direction: column;
   gap: 4px;
   flex: 1;
-  min-width: 180px;
+  min-width: min(180px, 100%);
 }
 .cloud-input-group.flex-2 {
   flex: 2;
-  min-width: 260px;
+  min-width: min(260px, 100%);
 }
 
 .cloud-field-label {
@@ -1072,7 +1074,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
 
 /* Layout: Overview (2-Column Balanced Dashboard) */
 .results-grid.layout-overview {
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   align-items: start;
 }
 .results-grid.layout-overview .results-col {
@@ -1168,6 +1170,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
 }
 
 .finding-card {
+  flex-shrink: 0; /* Keep wrapped confirmations inside each scrollable card. */
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1245,7 +1248,6 @@ button { cursor: pointer; font-family: var(--font-sans); }
 }
 
 .finding-card.completed {
-  opacity: 0.5;
   background: var(--color-surface-alt);
 }
 .finding-card.completed .finding-text {
@@ -1263,9 +1265,9 @@ button { cursor: pointer; font-family: var(--font-sans); }
 
 .finding-text {
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-ink);
-  line-height: 1.5;
+  line-height: 1.65;
   margin-bottom: var(--space-2);
 }
 
@@ -1327,7 +1329,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
 /* ══════════════
    About Page
    ══════════════ */
-.about-content { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.about-content { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 .about-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-sm);
@@ -1426,4 +1428,112 @@ button { cursor: pointer; font-family: var(--font-sans); }
   background: var(--color-success-bg);
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+/* Small refinements to the original workspace: readable details and safe reflow. */
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.target-user-input, .cloud-select, .cloud-text-input,
+.results-col, .result-section, .finding-header-row, .finding-text,
+.option-pill-content, .engine-option-pill, .footer-left { min-width: 0; }
+.page-subtitle, .finding-text, .summary-list li, .error-detail,
+.privacy-note, .hardware-alert-text, .cloud-key-status { overflow-wrap: anywhere; }
+.engine-mode-header, .cloud-drawer-header, .cloud-drawer-footer,
+.finding-header-row, .finding-meta { flex-wrap: wrap; }
+.cloud-drawer-footer { gap: var(--space-3); }
+.option-pill-top { flex-wrap: wrap; }
+.option-label { overflow-wrap: anywhere; }
+.engine-option-pill:focus-within { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.finding-text { flex: 1 1 160px; }
+.finding-owner { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.finding-quote { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
+.finding-ref { white-space: normal; overflow-wrap: anywhere; font-size: 12px; }
+.finding-meta { row-gap: var(--space-2); }
+.finding-meta .finding-ref:first-child { margin-left: 0; }
+.summary-list li::before { top: calc(var(--space-3) + .65em); }
+.summary-list li:first-child::before { top: .65em; }
+.results-grid.layout-overview .cards-list { padding: 3px; }
+.view-switcher { flex-wrap: wrap; overflow-x: visible; }
+.switcher-tab { padding: 9px 12px; }
+.input-panel-header, .results-actions, .input-actions { flex-wrap: wrap; }
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  .engine-mode-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 980px) {
+  .results-grid.layout-overview { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+  .sidebar { width: min(var(--sidebar-width), calc(100vw - 56px)); }
+  .finding-meta { flex-direction: row; justify-content: flex-start; }
+  .results-grid.layout-overview .cards-list { max-height: none; overflow-y: visible; }
+  .results-actions { width: 100%; }
+  .cloud-drawer-actions { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .input-panel-header, .target-user-row, .input-footer,
+  .result-section, .summary-section { padding: var(--space-4); }
+  .engine-mode-card { padding: var(--space-4); }
+  .file-drop-zone { padding: var(--space-3) var(--space-4); }
+  .cloud-config-drawer { padding: var(--space-3); }
+  .cloud-input-group, .cloud-input-group.flex-2 { flex-basis: 100%; min-width: 0; }
+  .metrics-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .metric-pill { padding: var(--space-3); }
+  .metric-pill-left { gap: 6px; min-width: 0; }
+  .metric-label { font-size: 11px; }
+  .metric-count { padding: 1px 6px; }
+  .results-header h2 { font-size: 2rem; }
+  .results-actions > button { flex: 1 1 auto; padding: 10px 12px; }
+  .finding-header-row { gap: var(--space-2); }
+  .finding-ref { margin-left: 0; }
+  .summary-list li { font-size: var(--font-size-base); }
+  .target-user-input, .cloud-select, .cloud-text-input, #conversation-input { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .text-btn, .secondary-btn, .primary-btn, .switcher-tab, .mobile-menu-btn { min-height: 44px; }
+  .task-checkbox { width: 22px; height: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Saved catch-ups extend the existing card and sidebar styles. */
+.sidebar-nav { overflow-y: auto; min-height: 0; }
+.sidebar { height: 100dvh; }
+.sidebar-brand, .sidebar-footer { flex-shrink: 0; }
+.nav-item .tab-count-badge { margin-left: auto; }
+.recent-section { margin-top: var(--space-6); padding: 0 var(--space-3); }
+.recent-section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-ink-secondary); margin-bottom: var(--space-2); }
+.recent-catchup { display: block; width: 100%; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-ink-secondary); font: inherit; font-size: 12px; text-align: left; padding: 9px 6px; cursor: pointer; overflow-wrap: anywhere; }
+.recent-catchup:hover, .recent-catchup[aria-current=true] { background: var(--color-accent-subtle); color: var(--color-accent-text); }
+.recent-section .library-empty { padding: 0; font-size: 12px; background: transparent; border: 0; }
+.library-toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.library-search { font-size: 12px; color: var(--color-ink-secondary); display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 420px; min-width: 0; }
+.library-search input, .catchup-dialog input { width: 100%; min-width: 0; border: 1px solid var(--color-border-strong); background: var(--color-surface); border-radius: var(--radius-sm); padding: 10px 12px; font: inherit; color: var(--color-ink); }
+.library-views { display: flex; gap: var(--space-2); }
+.library-views [aria-pressed=true] { color: var(--color-accent-text); border-color: var(--color-accent); background: var(--color-accent-subtle); }
+.library-storage-note, .library-feedback, .save-report-status { font-size: 12px; color: var(--color-ink-secondary); overflow-wrap: anywhere; }
+.library-feedback { margin: var(--space-3) 0; }
+.save-report-status { margin: 0 0 var(--space-4); }
+.library-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.saved-catchup-card, .library-empty { padding: var(--space-5); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.saved-catchup-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.saved-catchup-body { min-width: 0; flex: 1 1 260px; }
+.saved-catchup-card h2 { font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; margin-bottom: 6px; }
+.saved-catchup-card p, .library-empty { font-size: 12px; color: var(--color-ink-secondary); }
+.saved-catchup-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.catchup-dialog { margin: auto; padding: var(--space-6); width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-lg); font-family: var(--font-sans); }
+.catchup-dialog::backdrop { background: rgba(0,0,0,.4); }
+.catchup-dialog h2 { font-size: 20px; margin-bottom: var(--space-3); }
+.catchup-dialog p { font-size: 13px; margin-bottom: var(--space-4); color: var(--color-ink-secondary); overflow-wrap: anywhere; }
+.catchup-dialog label { display: block; font-size: 13px; margin-bottom: 6px; }
+.catchup-dialog .input-hint { color: var(--color-error); margin-top: var(--space-2); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+#report-heading { overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .library-search { flex-basis: 100%; }
+  .library-search input, .catchup-dialog input { font-size: 16px; }
+  .saved-catchup-card { padding: var(--space-4); }
+  .saved-catchup-actions { width: 100%; }
+  .saved-catchup-actions button { flex: 1 1 auto; }
+  .dialog-actions { flex-wrap: wrap; }
 }
