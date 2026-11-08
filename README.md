@@ -1,337 +1,107 @@
-# CatchUp ⚡
-### Conversation Analyst with Local and Optional Cloud Processing
+# CatchUp
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-pals--mu.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://pals-mu.vercel.app/)
-[![Engine Status](https://img.shields.io/badge/Test_Suite-1719%2F1719_Passing-059669?style=for-the-badge&logo=checkmarx)](test_regression/)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device_or_BYOK-dc2626?style=for-the-badge&logo=shield)](AGENTS.md)
-[![Model](https://img.shields.io/badge/Model-Llama_3.2_1B_%7C_Gemini_3.5_Flash_Lite-0284c7?style=for-the-badge&logo=meta)](https://huggingface.co/)
-[![Hackathon](https://img.shields.io/badge/Team-PALS_--_PROTOCOL_X-d97706?style=for-the-badge)](#team--credits)
+**Catch up on what matters.**
 
-> **CatchUp** turns conversation transcripts into a dashboard of tasks, decisions, and questions. Local Private and Instant Rules process conversation text on-device; optional Cloud Turbo sends transcripts directly to the selected API provider. Import supports `Name: message`, timestamped messages, and common WhatsApp text exports. Reformat unsupported Slack/Discord exports before analysis.
+[![Tests](https://github.com/guptavernit2-afk/CatchUp/actions/workflows/tests.yml/badge.svg)](https://github.com/guptavernit2-afk/CatchUp/actions/workflows/tests.yml)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES_modules-f7df1e?logo=javascript&logoColor=000)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
+[![WebGPU](https://img.shields.io/badge/Local_AI-WebGPU-6366f1)](docs/ARCHITECTURE.md)
 
----
+CatchUp turns long conversations into a source-linked briefing: what was decided, what needs attention, and what remains unanswered. Task tracking supports the catch-up, so you can understand the conversation first and follow through afterward.
 
-## 📑 Table of Contents
+A personal project built and maintained by [Vernit](https://github.com/guptavernit2-afk).
 
-- [The Core Problem & Walkaway](#-the-core-problem--walkaway)
-- [Processing Engines: Local vs Cloud vs Instant](#-processing-engines-local-vs-cloud-vs-instant)
-- [Key Features](#-key-features)
-- [System Architecture](#-system-architecture)
-- [Why Hybrid AI? (Neural + Heuristic)](#-why-hybrid-ai-neural--heuristic)
-- [Workspace & UI Structure](#-workspace--ui-structure)
-- [Project Directory](#-project-directory)
-- [Verification & Test Suite](#-verification--test-suite)
-- [Getting Started & Local Usage](#-getting-started--local-usage)
-- [Security & Privacy Blueprint](#-security--privacy-blueprint)
-- [Team & Credits](#-team--credits)
+[**Try CatchUp**](https://pals-mu.vercel.app/) · [Getting started](#run-locally) · [Documentation](docs/README.md) · [Report an issue](https://github.com/guptavernit2-afk/CatchUp/issues)
 
----
+## What you can do
 
-## 🎯 The Core Problem & Walkaway
+- **Get a quick briefing.** Review important messages, decisions, unresolved questions and blockers in one workspace.
+- **Keep the evidence.** Findings retain source quotes and message references; accepted tasks and contextual decisions include supporting messages where available.
+- **Follow up on tasks.** See owners and requested or confirmed status, then mark work complete.
+- **Personalize attention.** Enter your name to highlight relevant mentions and requests.
+- **Save catch-ups.** Add titles, search your library, reopen recent reports, rename them, and use Trash to restore or permanently delete saved reports.
+- **Share a report.** Copy Markdown or download a `.md` file, including task progress.
+- **Choose processing.** Use local AI, instant rules, or your own cloud API provider.
 
-### The Problem
-In modern remote work and hackathons, team members return from meetings, lunches, or offline periods to find **walls of unread chat messages**. Critical decisions, assigned action items, and urgent blocker questions are buried across multiple conversational threads. 
+## Processing options
 
-Traditional solutions require sending confidential company transcripts to third-party cloud LLM APIs (OpenAI, Anthropic), creating **severe data privacy, compliance, and IP leakage liabilities**.
+| Mode | How it works | What you need |
+| --- | --- | --- |
+| **Local Private** | WebLLM runs Llama 3.2 1B in a browser worker. The model selects briefing messages; rules supply canonical findings. Conversation text is processed on your device. | A working WebGPU browser and compatible GPU. First use downloads the model. |
+| **Instant Rules** | JavaScript extracts findings and builds a deterministic briefing on your device. | No model or API key. Once the app is loaded, analysis requires no provider request. |
+| **Cloud Turbo** | Your browser sends the transcript directly to Gemini, Groq, OpenAI, or a compatible custom endpoint. Results pass through source validation and rule checks. | Your provider API key, model access, network connection and available quota. |
 
-### The Walkaway (Value Proposition)
-CatchUp delivers a complete **Executive Triage Console** tailored to user privacy needs:
-1. **Total Privacy Guarantee (Local Hero)**: The conversation transcript **never leaves the user's browser**. Model weights run 100% locally via WebGPU shaders.
-2. **Flexible Cloud & Instant Fallbacks**: When data is not sensitive or hardware is constrained, users can execute via ultra-fast cloud LLM APIs (Gemini 3.5 Flash-Lite, Groq, OpenAI) or a fast on-device deterministic rule engine.
-3. **Elimination of the Infinite Scroll**: Unlike generic LLM chat interfaces that dump a 3,000px vertical text stream, CatchUp provides an **interactive multi-column Bento dashboard** and **instant category view-switcher**.
-4. **Source-grounded findings**: AI findings must include an exact quote from the specified message. Displayed finding text uses that quote; unsupported owners and free-form summaries are discarded. Source checks do not guarantee correct classification or interpretation.
+Model output is checked against source messages. If selections fail to cover detected findings, CatchUp uses a clearly labelled Instant Rules briefing. This improves consistency; it does not guarantee that every conversation is interpreted correctly.
 
----
+## Run locally
 
-## ⚙️ Processing Engines: Local vs Cloud vs Instant
+CatchUp is a static application using HTML, CSS and JavaScript modules. There is no frontend build step or application backend.
 
-CatchUp empowers users to pick the ideal execution profile right from the top navigation bar:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Processing Engine:                                                         │
-│  [🛡️ Local Private (WebGPU)]*   [⚡ Cloud Turbo (API)]    [⏱️ Instant Rules] │
-└─────────────────────────────────────────────────────────────────────────────┘
-  * Hero Default (Runs 100% on-device inside your browser)
+```sh
+git clone https://github.com/guptavernit2-afk/CatchUp.git
+cd CatchUp
+python -m http.server 8000 --bind 127.0.0.1
 ```
 
-| Engine Mode | Execution Runtime | Privacy Level | Speed / Latency | Best Used For |
-| :--- | :--- | :--- | :--- | :--- |
-| 🛡️ **Local Private** *(Default)* | **WebGPU** / Llama 3.2 1B Instruct via WebLLM | **100% On-Device** (Zero data leaves browser) | First use downloads model files; performance depends on device | **Sensitive conversations**, enterprise IP, proprietary code, private work transcripts |
-| ⚡ **Cloud Turbo** | **Direct Client API** (Gemini 3.5 Flash-Lite, Groq Llama 3.1, OpenAI GPT-4o-mini) | **Direct to Provider** (Zero intermediate servers, BYOK) | Provider- and transcript-dependent | Non-sensitive transcripts, large threads, low-spec devices without WebGPU |
-| ⏱️ **Instant Rules** | **Pure JavaScript** Deterministic Heuristic Engine | **100% Offline** (Zero network, zero download) | **Fast; depends on chat size** | Immediate triage, mobile browsers, emergency fallback if WebGPU is unsupported |
+Open **http://127.0.0.1:8000**. Use a local HTTP server rather than opening `index.html` directly. Python 3 is only needed for the example server; any suitable static server can run the application. WebGPU requires a secure context, such as HTTPS or loopback, and working browser/GPU support.
 
-> [!NOTE]
-> **Hardware Auto-Detection**: CatchUp automatically checks WebGPU support (`navigator.gpu.requestAdapter()`) on page load. If WebGPU is not supported by your hardware or browser, an informative alert appears and CatchUp smoothly transitions you to Instant Rules or Cloud Turbo mode without breaking.
->
-> **BYOK Security**: All cloud API keys are saved purely in your browser's private `localStorage` (`catchup_api_key_*`). Keys are never sent to our servers, never logged, and never included in Git commits. Cloud outputs still pass through CatchUp's strict quote validation and deduplication pipeline.
+The example server is for local development. Do not expose a checkout containing developer credentials or `.git` through a public static server.
 
----
+### First catch-up
 
-## ✨ Key Features
+1. Choose a processing mode. Start with **Instant Rules** to try CatchUp without a download or API key.
+2. Paste a transcript, drop a `.txt` or `.md` file, or choose **Load sample**.
+3. Optionally enter your name, then analyze.
+4. Review the briefing and category tabs. Check source quotes when context matters.
+5. Save the catch-up with a title, or export Markdown.
 
-| Category | Capability | Description |
-| :--- | :--- | :--- |
-| ⚡ **Needs Attention** | **Personalized Triage** | Automatically extracts blockers, urgent requests, and @mentions directed to you (or your customized `targetUser` filter). Includes self-mention guards. |
-| 📝 **Executive Summary** | **Synthesized Briefing** | Generates concise, high-signal summary bullet points highlighting project status, key milestones, and critical risks. |
-| 📋 **Action Items** | **Interactive Checklist** | Extracts tasks with explicit or inferred owners (`@Alice`), source quotes, and clickable checkboxes with strike-through completion states. |
-| 🎯 **Decisions Made** | **Consensus Register** | Distinguishes finalized agreements from tentative proposals, filtering out speculative hedges and "TBD" items. |
-| ❓ **Open Questions** | **Temporal Resolution** | Tracks unresolved questions and automatically resolves questions that were answered using nearby acknowledgements or later substantive answers with matching topics. |
-| 🎛️ **View Switcher** | **No-Scroll Dashboard** | Toggle between **Overview** (2-column balanced executive dashboard) and focused single-category views (`Needs You`, `Tasks`, `Decisions`, `Questions`). |
-| 📤 **Export & Report** | **One-Click Sharing** | Formats findings into an executive Markdown report with one-click clipboard copying (with fallback) and direct `.md` file download. |
+Supported input includes `Name: message`, timestamped messages and common iOS/Android WhatsApp text exports. Other export formats may need reformatting.
 
----
+## Saved reports and privacy
 
-## 🏗️ System Architecture
+Saved catch-ups live in **IndexedDB in the current browser**, with recent history in the sidebar. Task edits need **Save changes** to persist. Trash is reversible until you confirm permanent deletion.
 
-CatchUp operates on a **Dual-Stream Hybrid Architecture**, merging probabilistic neural generation with deterministic linguistic heuristics to achieve both contextual intelligence and deterministic reliability.
+Cloud keys and settings are stored separately in browser `localStorage`; they are excluded from saved-report records. Browser storage is not an encrypted vault or account backup. Other people using the same browser profile can access its data, and clearing site data can remove saved reports. Download Markdown for a separate copy.
 
-```mermaid
-flowchart TD
-    subgraph Client ["Client Browser (100% In-Memory Sandbox)"]
-        Raw["Raw Conversation Transcript\n(Paste or .md/.txt File Drop)"]
-        Parser["engine.js :: parseConversation()\n• Regex Line Matcher\n• Zero-padded msg_XX generation\n• Timestamp & Sender Normalization"]
-        
-        Raw --> Parser
-        
-        subgraph HybridEngine ["Dual-Stream Hybrid Analysis"]
-            direction TB
-            subgraph Stream1 ["Stream A: Local Neural Inference"]
-                WebLLM["WebLLM / WebGPU\n(Llama-3.2-1B-Instruct-q4f16_1)\n• System Prompting with Strict Schema\n• Low-temperature (0.1) inference"]
-                JsonSanitizer["JSON Parsing & Sanitization\n• CRLF & Code-Fence Stripping\n• Placeholder Rejector"]
-                QuoteValidator["Quote & Evidence Validation\n• Exact Substring Verification\n• Source ID Linking\n• Hallucination Pruning"]
-                WebLLM --> JsonSanitizer --> QuoteValidator
-            end
+Local AI downloads runtime/model files, and the page loads external fonts. Local processing does not mean the entire application makes no network requests. Cloud mode sends the transcript to your selected provider. See [data handling and privacy](docs/PRIVACY.md) for details.
 
-            subgraph Stream2 ["Stream B: Deterministic Heuristics"]
-                Heuristics["heuristics.js :: extractDeterministicFindings()\n• Target User Mention Matching\n• Negation & Vague Hedge Suppression\n• Question Resolution State Engine\n• Decision Keyword & Uncertainty Guards"]
-            end
-            
-            Parser -->|Structured Messages| Stream1
-            Parser -->|Structured Messages| Stream2
-        end
-        
-        subgraph Fusion ["Fusion & Deduplication"]
-            Dedupe["heuristics.js :: dedupe()\n• Pass 1: Source ID + Quote Signature Keying\n• Pass 2: Owner Divergence Preservation\n• Neural & Deterministic Synthesis"]
-            QuoteValidator --> Dedupe
-            Heuristics --> Dedupe
-        end
-        
-        subgraph UI ["Executive View Layer (Safe DOM)"]
-            AppController["app.js\n• View Switcher State Engine\n• textContent / createElement Only\n• Metric Summary Counts & Badges"]
-            Dashboard["index.html + style.css\n• 2-Column Balanced Executive Layout\n• Focus Tabs (Overview, Tasks, Decisions)\n• Internal Scrollable Finding Rails"]
-            Dedupe --> AppController --> Dashboard
-        end
-    end
-```
+## Verification
 
----
+The offline regression suite contains **1,719 checks** covering parsing, finding policy, evidence, worker recovery, saved-report persistence, exports and adversarial inputs.
 
-### Task status and decision evidence
-
-- **Requested** means an explicit named assignment or team imperative without acceptance. **Confirmed** means a first-person commitment or a matching acceptance from the assignee. A promise about a different task does not accept the request. Acceptance is linked as a second source quote, and all engines use this same policy.
-- A bare agreement is linked to the immediately preceding unambiguous proposal. The actual choice and both source references are retained in cards and exports. Unrecoverable or ambiguous agreements are omitted.
-- The local model selects up to four source-message IDs for the briefing. It does not generate task statuses or rewrite decisions. Invalid selections use a clearly labelled rule briefing.
-- Local AI runs in a dedicated worker using pinned WebLLM 0.2.87. It generates at most 128 tokens with an explicit JSON schema. Loading and inference are separate phases; a ready worker is reused between analyses. See [WebLLM worker documentation](https://webllm.mlc.ai/docs/user/advanced_usage.html#using-web-workers).
-- Cancel returns to input immediately without losing the transcript. The worker is interrupted and given up to five seconds to unload GPU resources before termination; a new local run waits for that cleanup. Stale callbacks cannot replace a newer analysis. Loading times out after 3 minutes and inference after 1 minute. Error and progress screens offer an explicit Instant Rules fallback.
-- Local mode accepts at most 200 messages and 12,000 serialized characters. Longer chats are rejected before model loading, with Cloud/Instant Rules recovery choices. This limit is a guard, not automatic chunking.
-
-## 🔬 Why Hybrid AI? (Neural + Heuristic)
-
-Most conversational AI assistants rely purely on LLM generation, leading to three common failures:
-1. **Quote Hallucinations**: Small models often fabricate or paraphrase quotes that were never actually spoken in the chat.
-2. **Missed Direct Assignments**: Complex edge cases (e.g. `"@Bob, can you finish the report?"`) can get lost in prompt tokenization.
-3. **Fragility on Low-Resource Devices**: If a mobile device or weak GPU encounters memory pressure, a pure-LLM app fails completely.
-
-### The CatchUp Difference:
-CatchUp pairs **Llama 3.2 1B (via WebGPU)** with **Stateless Deterministic Heuristics**:
-- **Strict Evidence Validation**: Every neural finding is cross-checked against the raw message text. If the quote cannot be verified character-for-character, it is discarded.
-- **Owner-aware deduplication (`dedupe()`)**: Synthesizes LLM discoveries with deterministic pattern-matching. If both streams identify the same task, they collapse into a single verified item; if owners diverge, both perspectives are preserved.
-- **Independent rule engine**: Instant Rules does not load WebLLM. Browsers without WebGPU switch to it automatically; provider or inference failures show an error so users can retry or choose another mode.
-
----
-
-## 🖥️ Workspace & UI Structure
-
-CatchUp eliminates the vertical wall of text through an **Executive Triage Layout**:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  CatchUp — Conversation Analysis Dashboard                  [Local AI: Ready]│
-├─────────────────────────────────────────────────────────────────────────────┤
-│  METRICS BAR:                                                               │
-│  [⚡ Needs You: 1]    [📋 Tasks: 3]    [🎯 Decisions: 1]   [❓ Questions: 2] │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  VIEW TABS:  [✦ Overview]  [⚡ Needs You]  [📋 Tasks]  [🎯 Decisions] [❓ Questions]│
-├──────────────────────────────────────┬──────────────────────────────────────┤
-│  PRIMARY COLUMN (60% Desktop)        │  SECONDARY COLUMN (40% Desktop)      │
-│  ──────────────────────────────────  │  ──────────────────────────────────  │
-│  • Executive Summary                 │  • Needs Your Attention              │
-│    Concise synthesized takeaways     │    Crimson-accented high priority    │
-│    and project status.               │    alert cards with direct actions.  │
-│                                      │                                      │
-│  • Action Items & Deliverables       │  • Decisions Made                    │
-│    Interactive checklist with        │    Emerald-accented confirmed        │
-│    checkboxes, @owner pills, and     │    consensus items.                  │
-│    citation references.              │                                      │
-│    (Internally scrollable rail)      │  • Open Questions & Blockers         │
-│                                      │    Amber-accented unresolved items.  │
-└──────────────────────────────────────┴──────────────────────────────────────┘
-```
-
----
-
-## 📁 Project Directory
-
-```
-d:\PALS_\
-├── index.html                   # Semantic markup, executive dashboard layout, accessible DOM
-├── style.css                    # Design system tokens, multi-column bento grid, dark/light accents
-├── app.js                       # UI controller, state management, safe DOM rendering, export handlers
-├── engine.js                    # WebLLM wrapper, Llama-3.2 prompt lifecycle, quote evidence validator
-├── local-runtime.js             # Worker lifecycle, cancellation and deadlines
-├── local-worker.js              # Pinned WebLLM worker handler
-├── report.js                    # Shared clipboard/download Markdown formatter
-├── evidence.js                  # Exact source validation and extractive AI results
-├── heuristics.js                # Deterministic pattern extractor, negation filter, owner-aware dedupe
-├── vercel.json                  # Production headers (X-Frame-Options, X-Content-Type-Options, nosniff)
-├── AGENTS.md                    # Project-wide architecture principles and rules
-├── README.md                    # Comprehensive documentation and architecture specification
-│
-└── test_regression/             # Automated test harnesses (1719 passing tests)
-    ├── reliability.test.mjs     # Native production-module tests (76 tests)
-    ├── runner.js                # Core regression runner (26 unit & contract tests)
-    ├── deep_stress.js           # Deep stress suite (62 stress tests across 7 categories)
-    └── adversarial.js           # Adversarial suite (28 real-world edge-case tests)
-```
-
----
-
-## Saved catch-ups
-
-Analyze a conversation, then choose **Save catch-up** and enter a title. **My catch-ups** lists saved reports with title search, rename, and Trash controls; the sidebar shows the five most recently saved/opened reports. Reopening restores the transcript, report, source references, target name, and task checkboxes. Choose **Save changes** after editing task progress; changes are not saved automatically.
-
-Reports and metadata are stored atomically in IndexedDB for this browser origin. API settings and keys are excluded from the saved-report schema. Storage is browser-local, not an account backup or encrypted vault: other users of the same browser profile can access saved content, and clearing site data/private browsing can remove it. Download Markdown for a separate copy. Moving to Trash is reversible; permanent deletion removes the stored report and metadata after confirmation. Stale-tab saves are rejected so they cannot overwrite newer edits or resurrect a deleted report.
-
-Automated saved-report checks cover persistence across store instances, edits, renaming, history/search, Trash/restore, permanent deletion, credentials exclusion, atomic failure, and conflicting tabs. Browser validation additionally checks actual reloads, task progress, dialogs, recent history, safe title rendering, and mobile layouts. Live GPU/cloud inference remains a separate check.
-
-## 🧪 Verification & Test Suite
-
-CatchUp is backed by a rigorous, multi-round regression testing suite consisting of **1719 automated tests** with **0 failures**:
-
-```bash
-# Run all regression and stress suites
+```sh
+# Node.js 18+ is required for development tools.
 npm ci
 npm test
 ```
 
-The total includes 1,451 internal quality checks: 80 independently authored synthetic English scenarios expanded into 1,280 name/format checks, 160 mocked local/cloud classification-contract checks, and eleven state/scale/summary checks. Variants are not independent real-world chats, and mocked responses do not measure live LLM quality. See [the engine quality audit](test_regression/ENGINE_QUALITY.md) for before/after results, examples, and limits.
+GitHub Actions runs the offline suite on Node 18, 22 and 24. It does not require API keys or download a model.
 
-### Breakdown of Test Suites:
+Live verification on **8 November 2026** checked the exact local WebLLM engine on **80 short chats and five longer chats**, plus Gemini on **five short and five longer chats**. All final-output fixture checks passed. Some local briefings needed the labelled rule fallback; one raw Gemini task omission was corrected by the rules. These are synthetic regression results, not a general accuracy score.
 
-Manual browser validation (2026-11-07): the project owner confirmed that Local Private cancellation followed by retry completed successfully in Chrome. The supplied screenshot shows WebGPU Ready, local AI results, and the sample's four tasks, two contextual decisions, and one open question. This is a manual smoke check on that device, separate from the automated lifecycle tests.
+[Testing guide](docs/TESTING.md) · [Internal quality audit](docs/quality/ENGINE_QUALITY.md) · [Live engine audit](docs/quality/LIVE_ENGINE_AUDIT.md)
 
-0. **`reliability.test.mjs` (76 tests using native imports of production modules)**:
-   - Provider isolation, redirect refusal, secure custom URLs, timeouts, and current Gemini request format.
-   - Exact quote/source matching, Unicode evidence, unsupported owners, malformed responses, and source-linked summary points.
-   - WhatsApp imports, speaker preservation, explicit unsupported-format errors, negation, acknowledgements, and owner conflicts.
-   - Cloud requests are mocked with fake keys; no billable requests or model downloads occur.
+## Repository structure
 
-   **`evaluation.test.mjs` (11 conversation and export checks)** uses ten synthetic chats with expected source IDs, owners, decisions, and open questions. It also verifies completed task export. The corpus is small and does not establish general accuracy.
-
-   **`lifecycle.test.mjs` (35 policy and runtime checks)** covers worker reuse, load/inference cancellation and deadlines, late completions, worker crashes, schema compatibility, task parity, contextual decisions, and labelled briefing fallbacks.
-
-1. **`runner.js` (26 Contract & Engine Tests)**:
-   - First-person ownership (`@Bob I will do it` → owner: the speaker, not Bob).
-   - Non-assignment mention filtering.
-   - Dynamic `targetUser` matching and null-fallback routing.
-   - Negation filtering (`"I can't make it"` is never an action).
-   - Vague hedge filtering (`"I will think about it"` / `"We will see"` excluded).
-   - URL query parameter isolation (`?` in URLs does not trigger open questions).
-   - Malformed message payload and null-sender resilience.
-   - Heuristic instant engine execution via `analyzeConversation` with hardware detection checks.
-   - Direct substantive answer resolution without positive-ack keywords.
-   - Built-in sample conversation multi-engine benchmark (validating team deliverables, decisions, and open blockers).
-
-2. **`deep_stress.js` (62 Stress Tests)**:
-   - Category 1: `parseConversation` formats (standard, WhatsApp, timestamps, multiline).
-   - Category 2: Needs You attention & self-mention exclusion.
-   - Category 3: Open question detection and auto-resolution keyword engine.
-   - Category 4: Action items & team imperatives (`@Team`, `Everyone must`).
-   - Category 5: Decision consensus vs. tentative proposals (`maybe`, `undecided`).
-   - Category 6: Deduplication logic across mixed LLM and heuristic outputs.
-   - Category 7: High-throughput benchmark (100 messages parsed and extracted in <100ms).
-
-3. **`adversarial.js` (28 Adversarial Tests)**:
-   - Short-token time answer resolution (e.g. `"Can we meet at 1 PM?"` answered by `"1 PM works for me"`).
-   - Pure standalone acknowledgments (`"confirmed"`, `"works for me"`).
-   - TBD and "agreed to disagree" suppression.
-   - Large conversation scaling (>200 messages sequential ID ordering).
-
----
-
-## 🚀 Getting Started & Local Usage
-
-### Prerequisites
-- Any modern web browser supporting **WebGPU** (Chrome 113+, Edge 113+, Firefox Nightly, Safari 18+).
-- Optional: [Node.js](https://nodejs.org/) (v18+) to run the regression test suite.
-
-### Running Locally
-Because CatchUp is built with pure ES Modules, it can be served using any local static file server:
-
-```bash
-# Clone the repository
-git clone https://github.com/guptavernit2-afk/PALS_.git
-cd PALS_
-
-# Serve using Python
-python -m http.server 8000
-
-# Or serve using Node.js npx
-npx serve .
+```text
+CatchUp/
+├── index.html / style.css       # Workspace markup and styles
+├── app.js / sidebar.js          # UI and navigation controllers
+├── library-ui.js                # Saved catch-up library UI
+├── engine.js                    # Parsing and analysis orchestration
+├── heuristics.js / evidence.js  # Canonical findings and source validation
+├── local-runtime.js             # Worker lifecycle, cancellation and deadlines
+├── local-worker.js              # WebLLM worker
+├── saved-catchups.js / report.js # Persistence and Markdown export
+├── docs/                        # Architecture, privacy, testing and audits
+├── test_regression/             # Fixtures, regression suites and live runners
+├── .github/                     # CI and contribution templates
+└── vercel.json                  # Deployment security headers
 ```
 
-Open your browser at `http://localhost:8000`.
+## Current scope
 
-### Using the Application
-1. **Choose Engine Profile**: Choose **🛡️ Local Private** (default WebGPU) for confidential data, **⚡ Cloud Turbo** (Gemini/Groq/OpenAI) for fast BYOK inference, or **⏱️ Instant Rules** for fast on-device extraction.
-2. **Target User (Optional)**: Enter your name (e.g. `Alice` or `@Alice`) in the target user input to personalize high-priority alerts under **Needs You**.
-3. **Load Conversation**: Click **"Load sample"** to test with our built-in hackathon planning transcript, paste your own text, or drop a `.md` / `.txt` file into the dropzone.
-4. **Analyze**: Click **"Analyze Conversation"**.
-5. **Triage & Export**: Use the view tabs to review tasks and decisions, toggle completed checkboxes, and click **"Copy Markdown"** or **"Download .md"** to export your meeting minutes.
+CatchUp is a browser-based personal workspace. It has no account system, cloud sync, shared workspaces or automatic chat-service integration. Saved reports stay in the browser where you created them.
 
----
+Extraction is conservative and primarily tested on English conversations. Implicit assignments, sarcasm, ambiguous pronouns, complex revisions and other languages can be missed. Local AI accepts up to 200 messages or 12,000 serialized characters. A briefing is bounded; use the category lists and source evidence for the full picture.
 
-### Reliability contracts
-
-- `engine.js` exports `DEFAULT_GEMINI_MODEL`; the UI reads the same default. It currently uses `gemini-3.5-flash-lite`. See [Google’s model lifecycle documentation](https://firebase.google.com/docs/ai-logic/faq-and-troubleshooting#deprecated-shut-down-models) before changing models.
-- Named providers ignore saved custom URLs. Only Custom mode can use a custom URL; API keys remain provider-specific.
-- AI categories are conservative: attention and open questions need rule corroboration; tasks and decisions use canonical rule findings with status and context evidence. English contractions with straight or smart apostrophes are matched without changing source quotes. This can miss implicit or non-English findings.
-- AI finding text is extractive. Quotes are case-sensitive substrings of the specified source; IDs are never silently reassigned. Unsupported summaries use the deterministic briefing instead. These checks establish provenance, not factual or semantic certainty.
-- Unknown JSON fields are ignored and malformed finding entries are dropped. Invalid JSON, empty responses, HTTP failures, and timeouts produce actionable errors without displaying raw response text.
-- Unicode, hyphenated and apostrophe-containing names and common iOS/Android WhatsApp exports are supported. Known unsupported Slack/Discord headers produce errors instead of silently discarding speakers. Timestamped system notices are skipped.
-- `npm ci` installs the development-only IndexedDB and headless-browser test tools; `npm test` runs all suites. The browser app has no new runtime dependencies. GitHub Actions runs them on Node 18, 22, and 24. Live WebGPU and authenticated provider smoke tests are separate manual checks.
-
-## 🔒 Security & Privacy Blueprint
-
-- **Zero Remote Telemetry (Local Mode)**: CatchUp transmits 0 bytes of conversation data over the network in Local Private mode. All inference occurs in WebGPU shaders on your machine.
-- **Client-Side Secret Storage (Cloud Mode)**: Keys are persisted in origin-scoped `localStorage`, accessible to scripts running on this origin. Requests use provider-specific URLs and authentication headers. Custom URLs are used only in Custom mode, must use HTTPS (or HTTP on loopback), and may not embed URL credentials. Cloud redirects are rejected and requests time out after 60 seconds.
-- **Safe text rendering**: Model and user strings are strictly inserted using `node.textContent` and `document.createElement`. No `innerHTML` or `eval` execution of external or AI-generated strings.
-- **Hardened Deployment**: Configured via `vercel.json` with strict HTTP security headers:
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-
----
-
-## 👥 Team & Credits
-
-Built with pride by team **PALS_** for the **PROTOCOL X** Hackathon:
-
-* **Engine Architecture & AI**: Deterministic heuristic engine, WebLLM integration, quote validator, cloud BYOK pipeline.
-* **Frontend & UI/UX**: Executive triage dashboard, engine mode switcher, segmented view switcher, responsive bento grid.
-* **Testing & Hardening**: 1719-test regression harness, adversarial stress testing.
-
-*CatchUp — Catch up on what matters. Local processing or your chosen cloud provider.*
-
-Live model checks and their limits are documented in [the live engine audit](test_regression/LIVE_ENGINE_AUDIT.md). Use the opt-in internal runners for authenticated Gemini or exact headless WebLLM tests; neither runs as part of `npm test`.
+The current version is a working baseline for personal use and continued iteration. See [CONTRIBUTING.md](CONTRIBUTING.md) for development and issue-reporting guidance.
