@@ -10,7 +10,7 @@ CatchUp turns long conversations into a source-linked briefing: what was decided
 
 A personal project built and maintained by [Vernit](https://github.com/guptavernit2-afk).
 
-[**Try CatchUp**](https://pals-mu.vercel.app/) · [Getting started](#run-locally) · [Documentation](docs/README.md) · [Report an issue](https://github.com/guptavernit2-afk/CatchUp/issues)
+[**Try CatchUp**](https://catchup-workspace.vercel.app/) · [Getting started](#run-locally) · [Documentation](docs/README.md) · [Report an issue](https://github.com/guptavernit2-afk/CatchUp/issues)
 
 ## What you can do
 
@@ -63,6 +63,8 @@ Saved catch-ups live in **IndexedDB in the current browser**, with recent histor
 Cloud keys and settings are stored separately in browser `localStorage`; they are excluded from saved-report records. Browser storage is not an encrypted vault or account backup. Other people using the same browser profile can access its data, and clearing site data can remove saved reports. Download Markdown for a separate copy.
 
 Local AI downloads runtime/model files, and the page loads external fonts. Local processing does not mean the entire application makes no network requests. Cloud mode sends the transcript to your selected provider. See [data handling and privacy](docs/PRIVACY.md) for details.
+
+The current live address is **https://catchup-workspace.vercel.app/**. The [previous address](https://pals-mu.vercel.app/) remains available for existing users. Browser storage is separate for each address: saved catch-ups and API settings do not automatically move to the new one. Existing reports can still be opened and exported from the previous address.
 
 ## Verification
 
