@@ -46,6 +46,7 @@ CatchUp brings the important parts into one workspace, with source quotes so you
 - [Verification](#verification)
 - [Repository structure](#repository-structure)
 - [Scope and limitations](#scope-and-limitations)
+- [Future scope](#future-scope)
 - [Documentation and contributing](#documentation-and-contributing)
 
 </details>
@@ -342,6 +343,16 @@ CatchUp/
 CatchUp is a working personal browser workspace. Accounts, cloud sync, shared workspaces and automatic chat-service integrations are outside the current version.
 
 Extraction is conservative and primarily tested in English. Implicit assignments, sarcasm, ambiguous pronouns, complex revisions and other languages can be missed. Briefings are bounded; review the category lists and source messages for detail. Existing saved reports keep their original findings until the transcript is reanalyzed.
+
+## Future scope
+
+Browser-local IndexedDB storage remains the current approach. The following are future improvements, not features available in this version:
+
+| Improvement | Intended capability |
+| --- | --- |
+| **Backup and restore** | Export and import complete saved catch-ups, including transcripts, findings, titles and task progress. Markdown remains an export of results, not a restorable app backup. |
+| **Optional authentication** | Sign in to an account when using future cloud features. |
+| **Optional cloud sync** | Keep saved catch-ups and task progress in sync across devices and browsers for signed-in users. |
 
 ## Documentation and contributing
 
